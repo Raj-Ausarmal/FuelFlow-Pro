@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 from database.database import initialize_database, get_connection
 from datetime import datetime
 import secrets
@@ -11,11 +11,11 @@ initialize_database()
 
 @app.route("/")
 def home():
-    return jsonify({
-        "project": "FuelFlow Pro",
-        "message": "Smart Petrol Pump Management System",
-        "status": "Backend running"
-    })
+    return render_template("customer.html")
+
+@app.route("/operator")
+def operator():
+    return render_template("operator.html")
 
 
 @app.route("/api/pumps")
@@ -124,6 +124,122 @@ def create_token():
             "created_at": created_at
         }
     }), 201
+
+@app.route("/api/operator/scan", methods=["POST"])
+def operator_scan():
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            "error": "Request body is required"
+        }), 400
+
+    token_code = data.get("token_code")
+    pump_number = data.get("pump_number")
+
+    if not token_code or pump_number is None:
+        return jsonify({
+            "error": "token_code and pump_number are required"
+        }), 400
+
+    token_code = token_code.strip().upper()
+
+    try:
+        pump_number = int(pump_number)
+    except (ValueError, TypeError):
+        return jsonify({
+            "error": "pump_number must be a valid number"
+        }), 400
+
+    connection = get_connection()
+
+    # Find the token
+    token = connection.execute("""
+        SELECT *
+        FROM tokens
+        WHERE token_code = ?
+    """, (token_code,)).fetchone()
+
+    if token is None:
+        connection.close()
+
+        return jsonify({
+            "error": "Token not found"
+        }), 404
+
+    # Token must be WAITING
+    if token["status"] != "WAITING":
+        connection.close()
+
+        return jsonify({
+            "error": f"Token cannot be scanned because its status is {token['status']}"
+        }), 400
+
+    # Find the selected physical pump
+    pump = connection.execute("""
+        SELECT *
+        FROM pumps
+        WHERE pump_number = ?
+    """, (pump_number,)).fetchone()
+
+    if pump is None:
+        connection.close()
+
+        return jsonify({
+            "error": "Pump not found"
+        }), 404
+
+    # Pump must be available
+    if pump["status"] != "AVAILABLE":
+        connection.close()
+
+        return jsonify({
+            "error": f"Pump {pump_number} is currently {pump['status']}"
+        }), 400
+
+    scanned_at = datetime.now().isoformat(timespec="seconds")
+
+    # Assign token to the physical pump
+    connection.execute("""
+        UPDATE tokens
+        SET
+            pump_number = ?,
+            status = 'AUTHORIZED',
+            scanned_at = ?
+        WHERE token_code = ?
+    """, (
+        pump_number,
+        scanned_at,
+        token_code
+    ))
+
+    # Make pump busy
+    connection.execute("""
+        UPDATE pumps
+        SET
+            status = 'BUSY',
+            current_token = ?
+        WHERE pump_number = ?
+    """, (
+        token_code,
+        pump_number
+    ))
+
+    connection.commit()
+    connection.close()
+
+    return jsonify({
+        "message": "Token verified and assigned to pump successfully",
+        "token": {
+            "token_code": token_code,
+            "vehicle_number": token["vehicle_number"],
+            "fuel_type": token["fuel_type"],
+            "amount": token["amount"],
+            "pump_number": pump_number,
+            "status": "AUTHORIZED",
+            "scanned_at": scanned_at
+        }
+    }), 200
 
 @app.route("/api/tokens/<token_code>", methods=["GET"])
 def get_token(token_code):

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>FuelFlow Pro</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7f5;
+            color: #1f2937;
+        }
+
+        .header {
+            background: #0f5132;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .header p {
+            margin: 6px 0 0;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: bold;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            background: #198754;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #146c43;
+        }
+
+        .note {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #6b7280;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="header">
+        <h1>FuelFlow Pro</h1>
+        <p>Smart Petrol Pump Management System</p>
+    </header>
+
+    <main class="container">
+
+        <div class="card">
+
+            <h2>Generate Fuel Token</h2>
+
+            <form id="tokenForm">
+
+                <label for="vehicleNumber">
+                    Vehicle Number
+                </label>
+
+                <input
+                    type="text"
+                    id="vehicleNumber"
+                    placeholder="e.g. MH20AB1234"
+                    required
+                >
+
+                <label for="fuelType">
+                    Fuel Type
+                </label>
+
+                <select id="fuelType" required>
+                    <option value="">Select fuel type</option>
+                    <option value="PETROL">Petrol</option>
+                    <option value="DIESEL">Diesel</option>
+                </select>
+
+                <label for="amount">
+                    Amount (₹)
+                </label>
+
+                <input
+                    type="number"
+                    id="amount"
+                    placeholder="Enter amount"
+                    min="1"
+                    required
+                >
+
+                <button type="submit">
+                    Generate Fuel Token
+                </button>
+
+            </form>
+
+            <div class="note">
+                <div id="tokenResult" style="display: none; margin-top: 25px; padding: 25px; background: #f8faf9; border-radius: 12px; text-align: center; border: 1px solid #d1d5db;">
+
+    <h3 style="margin-top: 0; color: #0f5132;">
+        Fuel Token Generated
+    </h3>
+
+    <p>
+        <strong>Token:</strong>
+        <span id="displayToken"></span>
+    </p>
+
+    <p>
+        <strong>Vehicle:</strong>
+        <span id="displayVehicle"></span>
+    </p>
+
+    <p>
+        <strong>Fuel:</strong>
+        <span id="displayFuel"></span>
+    </p>
+
+    <p>
+        <strong>Amount:</strong>
+        ₹<span id="displayAmount"></span>
+    </p>
+
+    <div id="qrcode" style="display: flex; justify-content: center; margin: 20px 0;"></div>
+
+    <p style="color: #198754; font-weight: bold;">
+        Status: WAITING
+    </p>
+
+    <p style="font-size: 14px; color: #6b7280;">
+        Show this QR code to the operator at the petrol pump.
+    </p>
+
+</div>
+                You do not need to select a pump.
+                The pump will be assigned by the operator at the station.
+            </div>
+
+        </div>
+
+    </main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+    document.getElementById("tokenForm").addEventListener("submit", async function(event) {
+        event.preventDefault();
+
+        const vehicleNumber = document.getElementById("vehicleNumber").value.trim();
+        const fuelType = document.getElementById("fuelType").value;
+        const amount = document.getElementById("amount").value;
+
+        try {
+            const response = await fetch("/api/tokens", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    vehicle_number: vehicleNumber,
+                    fuel_type: fuelType,
+                    amount: amount
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert(data.error || "Failed to generate token.");
+                return;
+            }
+
+           document.getElementById("displayToken").textContent =
+    data.token.token_code;
+
+document.getElementById("displayVehicle").textContent =
+    data.token.vehicle_number;
+
+document.getElementById("displayFuel").textContent =
+    data.token.fuel_type;
+
+document.getElementById("displayAmount").textContent =
+    data.token.amount;
+
+document.getElementById("tokenResult").style.display = "block";
+
+document.getElementById("qrcode").innerHTML = "";
+
+new QRCode(document.getElementById("qrcode"), {
+    text: data.token.token_code,
+    width: 200,
+    height: 200
+});
+
+console.log(data);
+
+        } catch (error) {
+            console.error(error);
+            alert("Could not connect to the FuelFlow server.");
+        }
+    });
+</script>
+
+</body>
+</html>

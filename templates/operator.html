@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>FuelFlow Pro - Operator</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7f5;
+            color: #1f2937;
+        }
+
+        .header {
+            background: #0f5132;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .header p {
+            margin: 6px 0 0;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 35px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 14px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #0f5132;
+        }
+
+        .pumps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .pump {
+            padding: 20px;
+            border: 2px solid #d1d5db;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            background: white;
+        }
+
+        .pump:hover {
+            border-color: #198754;
+        }
+
+        .pump.selected {
+            border-color: #198754;
+            background: #eaf7ef;
+        }
+
+        .pump-number {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .status {
+            margin-top: 8px;
+            font-weight: bold;
+            color: #198754;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            background: #198754;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #146c43;
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .token-details {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8faf9;
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+        }
+
+        .message {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        @media (max-width: 700px) {
+            .pumps {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="header">
+        <h1>FuelFlow Pro</h1>
+        <p>Operator Dashboard</p>
+    </header>
+
+    <main class="container">
+
+        <div class="card">
+
+            <h2>1. Select Physical Pump</h2>
+
+            <div class="pumps">
+
+                <div class="pump" data-pump="1">
+                    <div class="pump-number">Pump 1</div>
+                    <div class="status" id="status1">AVAILABLE</div>
+                </div>
+
+                <div class="pump" data-pump="2">
+                    <div class="pump-number">Pump 2</div>
+                    <div class="status" id="status2">AVAILABLE</div>
+                </div>
+
+                <div class="pump" data-pump="3">
+                    <div class="pump-number">Pump 3</div>
+                    <div class="status" id="status3">AVAILABLE</div>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>2. Scan Customer QR</h2>
+
+            <label for="tokenCode">
+                Token Code
+            </label>
+
+            <input
+                type="text"
+                id="tokenCode"
+                placeholder="Example: FF-1D58FAEC"
+            >
+
+            <button id="scanButton">
+                Verify Token & Assign Pump
+            </button>
+
+            <div id="message" class="message"></div>
+
+        </div>
+
+
+        <div id="tokenDetails" class="card token-details">
+
+            <h2>3. Refueling Details</h2>
+
+            <p>
+                <strong>Token:</strong>
+                <span id="detailToken"></span>
+            </p>
+
+            <p>
+                <strong>Vehicle:</strong>
+                <span id="detailVehicle"></span>
+            </p>
+
+            <p>
+                <strong>Fuel:</strong>
+                <span id="detailFuel"></span>
+            </p>
+
+            <p>
+                <strong>Amount:</strong>
+                ₹<span id="detailAmount"></span>
+            </p>
+
+            <p>
+                <strong>Pump:</strong>
+                Pump <span id="detailPump"></span>
+            </p>
+
+            <p>
+                <strong>Status:</strong>
+                <span id="detailStatus">AUTHORIZED</span>
+            </p>
+
+            <br>
+
+            <button id="completeButton">
+                Mark Refueling Done — Expire Token
+            </button>
+
+        </div>
+
+    </main>
+
+
+    <script>
+
+        let selectedPump = null;
+        let authorizedToken = null;
+
+
+        // Select physical pump
+        document.querySelectorAll(".pump").forEach(function (pump) {
+
+            pump.addEventListener("click", function () {
+
+                const status = pump.querySelector(".status").textContent;
+
+                if (status !== "AVAILABLE") {
+                    showMessage(
+                        "This pump is currently busy.",
+                        "error"
+                    );
+
+                    return;
+                }
+
+                document.querySelectorAll(".pump").forEach(function (item) {
+                    item.classList.remove("selected");
+                });
+
+                pump.classList.add("selected");
+
+                selectedPump = pump.dataset.pump;
+
+                showMessage(
+                    "Pump " + selectedPump + " selected.",
+                    "success"
+                );
+            });
+
+        });
+
+
+        // Scan / verify token
+        document.getElementById("scanButton").addEventListener("click", async function () {
+
+            const tokenCode = document
+                .getElementById("tokenCode")
+                .value
+                .trim();
+
+            if (!selectedPump) {
+                showMessage(
+                    "Please select the physical pump first.",
+                    "error"
+                );
+
+                return;
+            }
+
+            if (!tokenCode) {
+                showMessage(
+                    "Please enter or scan a token.",
+                    "error"
+                );
+
+                return;
+            }
+
+
+            try {
+
+                const response = await fetch("/api/operator/scan", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        token_code: tokenCode,
+                        pump_number: selectedPump
+                    })
+
+                });
+
+
+                const data = await response.json();
+
+
+                if (!response.ok) {
+
+                    showMessage(
+                        data.error || "Token verification failed.",
+                        "error"
+                    );
+
+                    return;
+                }
+
+
+                authorizedToken = data.token.token_code;
+
+
+                document.getElementById("detailToken").textContent =
+                    data.token.token_code;
+
+                document.getElementById("detailVehicle").textContent =
+                    data.token.vehicle_number;
+
+                document.getElementById("detailFuel").textContent =
+                    data.token.fuel_type;
+
+                document.getElementById("detailAmount").textContent =
+                    data.token.amount;
+
+                document.getElementById("detailPump").textContent =
+                    data.token.pump_number;
+
+                document.getElementById("detailStatus").textContent =
+                    data.token.status;
+
+
+                document.getElementById("tokenDetails").style.display =
+                    "block";
+
+
+                document.getElementById("status" + selectedPump).textContent =
+                    "BUSY";
+
+
+                showMessage(
+                    "Token verified. Pump " + selectedPump + " is now BUSY.",
+                    "success"
+                );
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                showMessage(
+                    "Could not connect to the FuelFlow server.",
+                    "error"
+                );
+
+            }
+
+        });
+
+
+        // Complete refueling
+        document.getElementById("completeButton").addEventListener("click", async function () {
+
+            if (!authorizedToken) {
+
+                showMessage(
+                    "No authorized token found.",
+                    "error"
+                );
+
+                return;
+            }
+
+
+            try {
+
+                const response = await fetch("/api/operator/complete", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        token_code: authorizedToken
+                    })
+
+                });
+
+
+                const data = await response.json();
+
+
+                if (!response.ok) {
+
+                    showMessage(
+                        data.error || "Could not complete refueling.",
+                        "error"
+                    );
+
+                    return;
+                }
+
+
+                document.getElementById("status" + selectedPump).textContent =
+                    "AVAILABLE";
+
+
+                document.getElementById("tokenDetails").style.display =
+                    "none";
+
+
+                document.getElementById("tokenCode").value = "";
+
+
+                showMessage(
+                    "Refueling completed. Token expired and Pump " +
+                    selectedPump +
+                    " is AVAILABLE.",
+                    "success"
+                );
+
+
+                document.querySelectorAll(".pump").forEach(function (item) {
+                    item.classList.remove("selected");
+                });
+
+
+                selectedPump = null;
+                authorizedToken = null;
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                showMessage(
+                    "Could not connect to the FuelFlow server.",
+                    "error"
+                );
+
+            }
+
+        });
+
+
+        function showMessage(message, type) {
+
+            const messageBox = document.getElementById("message");
+
+            messageBox.textContent = message;
+
+            messageBox.className =
+                "message " + type;
+
+            messageBox.style.display = "block";
+
+        }
+
+    </script>
+
+</body>
+
+</html>
