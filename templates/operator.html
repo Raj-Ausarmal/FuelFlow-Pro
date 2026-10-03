@@ -7,6 +7,8 @@
 
     <title>FuelFlow Pro - Operator</title>
 
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
     <style>
         * {
             box-sizing: border-box;
@@ -199,6 +201,24 @@
 
             <h2>2. Scan Customer QR</h2>
 
+            <div id="reader" style="width: 100%; max-width: 500px; margin: 20px auto;"></div>
+
+<button type="button" id="startScannerButton">
+    Start Camera Scanner
+</button>
+
+<button
+    type="button"
+    id="stopScannerButton"
+    style="display: none; margin-top: 10px;"
+>
+    Stop Camera
+</button>
+
+<p style="text-align: center; color: #6b7280; font-size: 14px;">
+    Scan the customer's FuelFlow QR code.
+</p>
+
             <label for="tokenCode">
                 Token Code
             </label>
@@ -267,6 +287,103 @@
 
         let selectedPump = null;
         let authorizedToken = null;
+        let html5QrCode = null;
+
+
+// Start QR scanner
+document.getElementById("startScannerButton").addEventListener("click", async function () {
+
+    try {
+
+        html5QrCode = new Html5Qrcode("reader");
+
+        const config = {
+            fps: 10,
+            qrbox: {
+                width: 250,
+                height: 250
+            }
+        };
+
+        await html5QrCode.start(
+            { facingMode: "environment" },
+            config,
+            function (decodedText) {
+
+                document.getElementById("tokenCode").value =
+                    decodedText.trim();
+
+                showMessage(
+                    "QR scanned successfully. Token detected: " + decodedText,
+                    "success"
+                );
+
+                stopScanner();
+
+            },
+            function (errorMessage) {
+                // QR not detected yet. Keep scanning.
+            }
+        );
+
+        document.getElementById("startScannerButton").style.display =
+            "none";
+
+        document.getElementById("stopScannerButton").style.display =
+            "block";
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        showMessage(
+            "Could not start camera. Please allow camera permission.",
+            "error"
+        );
+
+    }
+
+});
+
+
+// Stop QR scanner
+document.getElementById("stopScannerButton").addEventListener("click", function () {
+
+    stopScanner();
+
+});
+
+
+async function stopScanner() {
+
+    if (html5QrCode) {
+
+        try {
+
+            await html5QrCode.stop();
+            html5QrCode.clear();
+
+        }
+
+        catch (error) {
+
+            console.error("Scanner stop error:", error);
+
+        }
+
+        html5QrCode = null;
+
+    }
+
+    document.getElementById("startScannerButton").style.display =
+        "block";
+
+    document.getElementById("stopScannerButton").style.display =
+        "none";
+
+}
 
 
         // Select physical pump
