@@ -17,6 +17,10 @@ def home():
 def operator():
     return render_template("operator.html")
 
+@app.route("/admin")
+def admin():
+    return render_template("analytics.html")
+
 
 @app.route("/api/pumps")
 def get_pumps():
@@ -391,6 +395,81 @@ def complete_refueling():
             "token_status": "EXPIRED",
             "pump_status": "AVAILABLE"
         }
+    }), 200
+
+@app.route("/api/transactions", methods=["GET"])
+def get_transactions():
+    connection = get_connection()
+
+    transactions = connection.execute("""
+        SELECT
+            id,
+            token_code,
+            vehicle_number,
+            fuel_type,
+            amount,
+            pump_number,
+            started_at,
+            completed_at
+        FROM transactions
+        ORDER BY id DESC
+    """).fetchall()
+
+    connection.close()
+
+    return jsonify([
+        dict(transaction)
+        for transaction in transactions
+    ]), 200
+
+
+@app.route("/api/analytics", methods=["GET"])
+def get_analytics():
+    connection = get_connection()
+
+    total_transactions = connection.execute("""
+        SELECT COUNT(*) AS total
+        FROM transactions
+    """).fetchone()["total"]
+
+    total_revenue = connection.execute("""
+        SELECT COALESCE(SUM(amount), 0) AS total
+        FROM transactions
+    """).fetchone()["total"]
+
+    petrol_sales = connection.execute("""
+        SELECT COALESCE(SUM(amount), 0) AS total
+        FROM transactions
+        WHERE fuel_type = 'PETROL'
+    """).fetchone()["total"]
+
+    diesel_sales = connection.execute("""
+        SELECT COALESCE(SUM(amount), 0) AS total
+        FROM transactions
+        WHERE fuel_type = 'DIESEL'
+    """).fetchone()["total"]
+
+    pump_usage = connection.execute("""
+        SELECT
+            pump_number,
+            COUNT(*) AS transactions,
+            COALESCE(SUM(amount), 0) AS revenue
+        FROM transactions
+        GROUP BY pump_number
+        ORDER BY pump_number
+    """).fetchall()
+
+    connection.close()
+
+    return jsonify({
+        "total_transactions": total_transactions,
+        "total_revenue": total_revenue,
+        "petrol_sales": petrol_sales,
+        "diesel_sales": diesel_sales,
+        "pump_usage": [
+            dict(pump)
+            for pump in pump_usage
+        ]
     }), 200
 
 if __name__ == "__main__":

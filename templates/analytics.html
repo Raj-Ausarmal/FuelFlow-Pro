@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>FuelFlow Pro - Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7f6;
+            color: #1f2937;
+        }
+
+        header {
+            background: #0f9d58;
+            color: white;
+            padding: 20px 30px;
+        }
+
+
+        .refresh-button {
+    background: #0f9d58;
+    color: white;
+    border: none;
+    padding: 11px 18px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.refresh-button:hover {
+    background: #0b8043;
+}
+
+
+
+
+        .header-content {
+    max-width: 1200px;
+    margin: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+nav {
+    display: flex;
+    gap: 10px;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    padding: 9px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 7px;
+    font-size: 14px;
+}
+
+nav a:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+        header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+
+        header p {
+            margin: 6px 0 0;
+            opacity: 0.9;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1200px;
+            margin: 30px auto;
+        }
+
+        .section-title {
+            margin-bottom: 20px;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 22px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .card h3 {
+            margin: 0 0 10px;
+            color: #6b7280;
+            font-size: 15px;
+        }
+
+        .card .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #0f9d58;
+        }
+
+        .pump-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .pump-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .pump-card h3 {
+            margin-top: 0;
+            color: #0f9d58;
+        }
+
+        .pump-card p {
+            margin: 8px 0;
+        }
+
+        .table-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #f0fdf4;
+            color: #166534;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #6b7280;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .pump-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+       
+    </style>
+</head>
+
+<body>
+
+<header>
+    <div class="header-content">
+
+        <div>
+            <h1>FuelFlow Pro</h1>
+            <p>Transaction History & Analytics Dashboard</p>
+        </div>
+
+        <nav>
+            <a href="/">Customer</a>
+            <a href="/operator">Operator</a>
+            <a href="/admin">Analytics</a>
+        </nav>
+
+    </div>
+</header>
+
+    <div class="container">
+
+        <h2 class="section-title">Dashboard Overview</h2>
+        <button id="refreshButton" class="refresh-button">
+    Refresh Dashboard
+</button>
+
+        <div id="errorMessage" class="error"></div>
+
+        <div class="cards">
+
+            <div class="card">
+                <h3>Total Revenue</h3>
+                <div class="value" id="totalRevenue">₹0</div>
+            </div>
+
+            <div class="card">
+                <h3>Total Transactions</h3>
+                <div class="value" id="totalTransactions">0</div>
+            </div>
+
+            <div class="card">
+                <h3>Petrol Sales</h3>
+                <div class="value" id="petrolSales">₹0</div>
+            </div>
+
+            <div class="card">
+                <h3>Diesel Sales</h3>
+                <div class="value" id="dieselSales">₹0</div>
+            </div>
+
+        </div>
+
+        <div class="cards">
+
+    <div class="card">
+        <h3>Fuel Sales Distribution</h3>
+        <canvas id="fuelChart"></canvas>
+    </div>
+
+    <div class="card">
+        <h3>Pump Revenue</h3>
+        <canvas id="pumpChart"></canvas>
+    </div>
+
+</div>
+
+        <h2 class="section-title">Pump Usage</h2>
+
+        <div class="pump-grid" id="pumpUsage">
+
+            <div class="loading">
+                Loading pump data...
+            </div>
+
+        </div>
+
+        <h2 class="section-title">Transaction History</h2>
+
+        <div class="table-card">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Token</th>
+                        <th>Vehicle</th>
+                        <th>Fuel</th>
+                        <th>Amount</th>
+                        <th>Pump</th>
+                        <th>Started</th>
+                        <th>Completed</th>
+                    </tr>
+                </thead>
+
+                <tbody id="transactionTable">
+
+                    <tr>
+                        <td colspan="8" class="loading">
+                            Loading transactions...
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        async function loadAnalytics() {
+
+            try {
+
+                const response = await fetch("/api/analytics");
+
+                if (!response.ok) {
+                    throw new Error("Failed to load analytics");
+                }
+
+                const data = await response.json();
+
+                document.getElementById("totalRevenue").textContent =
+                    "₹" + data.total_revenue.toLocaleString("en-IN");
+
+                document.getElementById("totalTransactions").textContent =
+                    data.total_transactions;
+
+                document.getElementById("petrolSales").textContent =
+                    "₹" + data.petrol_sales.toLocaleString("en-IN");
+
+                document.getElementById("dieselSales").textContent =
+                    "₹" + data.diesel_sales.toLocaleString("en-IN");
+
+
+                const pumpContainer =
+                    document.getElementById("pumpUsage");
+
+                pumpContainer.innerHTML = "";
+
+
+                for (let pumpNumber = 1; pumpNumber <= 3; pumpNumber++) {
+
+                    const pump =
+                        data.pump_usage.find(
+                            item => item.pump_number === pumpNumber
+                        );
+
+
+                    const transactions =
+                        pump ? pump.transactions : 0;
+
+                    const revenue =
+                        pump ? pump.revenue : 0;
+
+
+                    pumpContainer.innerHTML += `
+                        <div class="pump-card">
+
+                            <h3>Pump ${pumpNumber}</h3>
+
+                            <p>
+                                <strong>Transactions:</strong>
+                                ${transactions}
+                            </p>
+
+                            <p>
+                                <strong>Revenue:</strong>
+                                ₹${revenue.toLocaleString("en-IN")}
+                            </p>
+
+                        </div>
+                    `;
+                }
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                showError("Unable to load analytics data.");
+
+            }
+
+        }
+
+
+        async function loadTransactions() {
+
+            try {
+
+                const response =
+                    await fetch("/api/transactions");
+
+                if (!response.ok) {
+                    throw new Error("Failed to load transactions");
+                }
+
+                const transactions =
+                    await response.json();
+
+
+                const table =
+                    document.getElementById("transactionTable");
+
+                table.innerHTML = "";
+
+
+                if (transactions.length === 0) {
+
+                    table.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="loading">
+                                No transactions found.
+                            </td>
+                        </tr>
+                    `;
+
+                    return;
+                }
+
+
+                transactions.forEach(transaction => {
+
+                    table.innerHTML += `
+                        <tr>
+
+                            <td>${transaction.id}</td>
+
+                            <td>${transaction.token_code}</td>
+
+                            <td>${transaction.vehicle_number}</td>
+
+                            <td>${transaction.fuel_type}</td>
+
+                            <td>
+                                ₹${transaction.amount.toLocaleString("en-IN")}
+                            </td>
+
+                            <td>
+                                Pump ${transaction.pump_number}
+                            </td>
+
+                            <td>${transaction.started_at}</td>
+
+                            <td>${transaction.completed_at}</td>
+
+                        </tr>
+                    `;
+
+                });
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                showError("Unable to load transaction history.");
+
+            }
+
+        }
+
+
+        function showError(message) {
+
+            const errorBox =
+                document.getElementById("errorMessage");
+
+            errorBox.textContent = message;
+
+            errorBox.style.display = "block";
+
+        }
+
+
+        async function loadCharts() {
+
+    try {
+
+        const response = await fetch("/api/analytics");
+
+        if (!response.ok) {
+            throw new Error("Failed to load chart data");
+        }
+
+        const data = await response.json();
+
+
+        // Petrol vs Diesel Chart
+        new Chart(document.getElementById("fuelChart"), {
+
+            type: "doughnut",
+
+            data: {
+                labels: ["Petrol", "Diesel"],
+
+                datasets: [{
+                    data: [
+                        data.petrol_sales,
+                        data.diesel_sales
+                    ]
+                }]
+            },
+
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    }
+                }
+            }
+
+        });
+
+
+        // Pump Revenue Chart
+        const pumpLabels = [];
+        const pumpRevenue = [];
+
+        for (let pumpNumber = 1; pumpNumber <= 3; pumpNumber++) {
+
+            const pump = data.pump_usage.find(
+                item => item.pump_number === pumpNumber
+            );
+
+            pumpLabels.push("Pump " + pumpNumber);
+
+            pumpRevenue.push(
+                pump ? pump.revenue : 0
+            );
+        }
+
+
+        new Chart(document.getElementById("pumpChart"), {
+
+            type: "bar",
+
+            data: {
+                labels: pumpLabels,
+
+                datasets: [{
+                    label: "Revenue",
+                    data: pumpRevenue
+                }]
+            },
+
+            options: {
+                responsive: true,
+
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error("Chart error:", error);
+
+    }
+
+}
+
+
+        document.getElementById("refreshButton").addEventListener("click", function () {
+
+    loadAnalytics();
+    loadTransactions();
+    loadCharts();
+
+});
+
+
+loadAnalytics();
+loadTransactions();
+loadCharts();
+
+    </script>
+
+</body>
+
+</html>
