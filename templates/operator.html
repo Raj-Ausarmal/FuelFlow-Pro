@@ -7,6 +7,7 @@
 
     <title>FuelFlow Pro - Operator</title>
 
+    <!-- QR Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
     <style>
@@ -21,91 +22,255 @@
             color: #1f2937;
         }
 
+        /* ================= HEADER ================= */
+
         .header {
             background: #0f5132;
             color: white;
-            padding: 20px;
-            text-align: center;
+            padding: 18px 30px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
         }
 
-        .header h1 {
+        .header-content {
+            max-width: 1150px;
+            margin: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .brand h1 {
             margin: 0;
             font-size: 28px;
         }
 
-        .header p {
-            margin: 6px 0 0;
+        .brand p {
+            margin: 5px 0 0;
+            font-size: 14px;
             opacity: 0.9;
         }
 
-        .container {
-            max-width: 900px;
-            margin: 35px auto;
-            padding: 20px;
+        nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
         }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 9px 14px;
+            border-radius: 7px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        nav a:hover,
+        nav a.active {
+            background: rgba(255, 255, 255, 0.16);
+        }
+
+        /* ================= MAIN ================= */
+
+        .container {
+            max-width: 1150px;
+            margin: 30px auto;
+            padding: 0 20px 40px;
+        }
+
+        .page-intro {
+            margin-bottom: 25px;
+        }
+
+        .page-intro h2 {
+            margin: 0;
+            color: #0f5132;
+            font-size: 25px;
+        }
+
+        .page-intro p {
+            margin-top: 7px;
+            color: #6b7280;
+        }
+
+        /* ================= CARDS ================= */
 
         .card {
             background: white;
             padding: 25px;
             border-radius: 14px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.07);
+            margin-bottom: 22px;
         }
 
-        h2 {
-            margin-top: 0;
-            color: #0f5132;
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
         }
+
+        .section-header h3 {
+            margin: 0;
+            color: #0f5132;
+            font-size: 19px;
+        }
+
+        .step-badge {
+            background: #eaf7ef;
+            color: #0f5132;
+            padding: 7px 11px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* ================= PUMPS ================= */
 
         .pumps {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
+            gap: 18px;
         }
 
         .pump {
-            padding: 20px;
+            padding: 24px 18px;
             border: 2px solid #d1d5db;
-            border-radius: 12px;
+            border-radius: 13px;
             text-align: center;
             cursor: pointer;
             background: white;
+            transition: 0.2s;
         }
 
         .pump:hover {
             border-color: #198754;
+            transform: translateY(-2px);
         }
 
         .pump.selected {
             border-color: #198754;
             background: #eaf7ef;
+            box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.08);
+        }
+
+        .pump.busy {
+            background: #fff7ed;
+            border-color: #f59e0b;
+        }
+
+        .pump-icon {
+            font-size: 30px;
+            margin-bottom: 8px;
         }
 
         .pump-number {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: bold;
         }
 
         .status {
-            margin-top: 8px;
+            display: inline-block;
+            margin-top: 10px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: #d1fae5;
+            color: #065f46;
+            font-size: 12px;
             font-weight: bold;
-            color: #198754;
+        }
+
+        .pump.busy .status {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .pump-help {
+            margin-top: 14px;
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        /* ================= SCANNER ================= */
+
+        .scanner-layout {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 25px;
+            align-items: start;
+        }
+
+        .scanner-box {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 15px;
+            background: #fafcfb;
+        }
+
+        #reader {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            overflow: hidden;
+            border-radius: 10px;
+        }
+
+        .scanner-info {
+            padding: 20px;
+            background: #f8faf9;
+            border-radius: 12px;
+        }
+
+        .scanner-info h4 {
+            margin-top: 0;
+            color: #0f5132;
+        }
+
+        .scanner-info p {
+            color: #6b7280;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .scanner-status {
+            margin-top: 15px;
+            padding: 11px;
+            border-radius: 8px;
+            background: #eef2ff;
+            color: #3730a3;
+            font-size: 13px;
+        }
+
+        /* ================= FORM ================= */
+
+        .form-group {
+            margin-top: 20px;
         }
 
         label {
             display: block;
             margin-bottom: 7px;
             font-weight: bold;
+            color: #374151;
         }
 
         input {
             width: 100%;
-            padding: 12px;
+            padding: 13px;
             border: 1px solid #d1d5db;
             border-radius: 8px;
             font-size: 16px;
-            margin-bottom: 15px;
+            outline: none;
         }
+
+        input:focus {
+            border-color: #198754;
+            box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.1);
+        }
+
+        /* ================= BUTTONS ================= */
 
         button {
             width: 100%;
@@ -114,9 +279,10 @@
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
+            transition: 0.2s;
         }
 
         button:hover {
@@ -128,20 +294,84 @@
             cursor: not-allowed;
         }
 
+        .secondary-button {
+            background: #374151;
+            margin-top: 10px;
+        }
+
+        .secondary-button:hover {
+            background: #1f2937;
+        }
+
+        .complete-button {
+            background: #0f5132;
+            font-size: 16px;
+            padding: 15px;
+        }
+
+        .complete-button:hover {
+            background: #083c25;
+        }
+
+        /* ================= TOKEN DETAILS ================= */
+
         .token-details {
             display: none;
-            margin-top: 20px;
-            padding: 20px;
-            background: #f8faf9;
-            border-radius: 10px;
-            border: 1px solid #d1d5db;
         }
+
+        .token-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .authorized-badge {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 7px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .detail-box {
+            background: #f8faf9;
+            border: 1px solid #e5e7eb;
+            border-radius: 9px;
+            padding: 15px;
+        }
+
+        .detail-label {
+            display: block;
+            color: #6b7280;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #111827;
+        }
+
+        /* ================= MESSAGE ================= */
 
         .message {
             margin-top: 15px;
-            padding: 12px;
+            padding: 12px 14px;
             border-radius: 8px;
             display: none;
+            font-size: 14px;
+            font-weight: bold;
         }
 
         .success {
@@ -154,9 +384,46 @@
             color: #991b1b;
         }
 
+        .workflow-note {
+            text-align: center;
+            color: #6b7280;
+            font-size: 13px;
+            margin-top: 25px;
+        }
+
+        /* ================= RESPONSIVE ================= */
+
+        @media (max-width: 850px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .scanner-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 700px) {
             .pumps {
                 grid-template-columns: 1fr;
+            }
+
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 0 12px 30px;
+                margin-top: 20px;
+            }
+
+            .card {
+                padding: 18px;
+            }
+
+            nav {
+                justify-content: center;
             }
         }
     </style>
@@ -164,32 +431,89 @@
 
 <body>
 
+    <!-- ================= HEADER ================= -->
+
     <header class="header">
-        <h1>FuelFlow Pro</h1>
-        <p>Operator Dashboard</p>
+        <div class="header-content">
+
+            <div class="brand">
+                <h1>FuelFlow Pro</h1>
+                <p>Smart Petrol Pump Management System</p>
+            </div>
+
+            <nav>
+                <a href="/">Customer</a>
+                <a href="/operator" class="active">Operator</a>
+                <a href="/admin">Analytics</a>
+            </nav>
+
+        </div>
     </header>
+
+
+    <!-- ================= MAIN ================= -->
 
     <main class="container">
 
+        <div class="page-intro">
+            <h2>Operator Dashboard</h2>
+            <p>Scan customer tokens, assign pumps and complete refueling.</p>
+        </div>
+
+
+        <!-- ================= STEP 1 ================= -->
+
         <div class="card">
 
-            <h2>1. Select Physical Pump</h2>
+            <div class="section-header">
+                <h3>1. Select Physical Pump</h3>
+                <span class="step-badge">Required</span>
+            </div>
 
             <div class="pumps">
 
                 <div class="pump" data-pump="1">
-                    <div class="pump-number">Pump 1</div>
+                    <div class="pump-icon">⛽</div>
+
+                    <div class="pump-number">
+                        Pump 1
+                    </div>
+
                     <div class="status" id="status1">AVAILABLE</div>
+
+                    <div class="pump-help">
+                        Click to select
+                    </div>
                 </div>
+
 
                 <div class="pump" data-pump="2">
-                    <div class="pump-number">Pump 2</div>
+                    <div class="pump-icon">⛽</div>
+
+                    <div class="pump-number">
+                        Pump 2
+                    </div>
+
                     <div class="status" id="status2">AVAILABLE</div>
+
+                    <div class="pump-help">
+                        Click to select
+                    </div>
                 </div>
 
+
                 <div class="pump" data-pump="3">
-                    <div class="pump-number">Pump 3</div>
+                    <div class="pump-icon">⛽</div>
+
+                    <div class="pump-number">
+                        Pump 3
+                    </div>
+
                     <div class="status" id="status3">AVAILABLE</div>
+
+                    <div class="pump-help">
+                        Click to select
+                    </div>
                 </div>
 
             </div>
@@ -197,91 +521,193 @@
         </div>
 
 
+        <!-- ================= STEP 2 ================= -->
+
         <div class="card">
 
-            <h2>2. Scan Customer QR</h2>
+            <div class="section-header">
+                <h3>2. Scan Customer QR</h3>
+                <span class="step-badge">Token Verification</span>
+            </div>
 
-            <div id="reader" style="width: 100%; max-width: 500px; margin: 20px auto;"></div>
+            <div class="scanner-layout">
 
-<button type="button" id="startScannerButton">
-    Start Camera Scanner
-</button>
+                <div>
 
-<button
-    type="button"
-    id="stopScannerButton"
-    style="display: none; margin-top: 10px;"
->
-    Stop Camera
-</button>
+                    <div class="scanner-box">
+                        <div id="reader"></div>
+                    </div>
 
-<p style="text-align: center; color: #6b7280; font-size: 14px;">
-    Scan the customer's FuelFlow QR code.
-</p>
+                    <button
+                        type="button"
+                        id="startScannerButton"
+                        style="margin-top: 15px;"
+                    >
+                        Start Camera Scanner
+                    </button>
 
-            <label for="tokenCode">
-                Token Code
-            </label>
+                    <button
+                        type="button"
+                        id="stopScannerButton"
+                        class="secondary-button"
+                        style="display: none;"
+                    >
+                        Stop Camera
+                    </button>
 
-            <input
-                type="text"
-                id="tokenCode"
-                placeholder="Example: FF-1D58FAEC"
+                </div>
+
+
+                <div class="scanner-info">
+
+                    <h4>How it works</h4>
+
+                    <p>
+                        1. Select the physical pump where the vehicle is parked.
+                    </p>
+
+                    <p>
+                        2. Scan the customer's FuelFlow QR code.
+                    </p>
+
+                    <p>
+                        3. Verify the token and assign it to the selected pump.
+                    </p>
+
+                    <div class="scanner-status">
+                        The customer does not select the pump.
+                        The operator assigns the actual physical pump.
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label for="tokenCode">
+                    Token Code
+                </label>
+
+                <input
+                    type="text"
+                    id="tokenCode"
+                    placeholder="Example: FF-1D58FAEC"
+                >
+
+            </div>
+
+
+            <button
+                id="scanButton"
+                style="margin-top: 5px;"
             >
-
-            <button id="scanButton">
                 Verify Token & Assign Pump
             </button>
+
 
             <div id="message" class="message"></div>
 
         </div>
 
 
-        <div id="tokenDetails" class="card token-details">
+        <!-- ================= STEP 3 ================= -->
 
-            <h2>3. Refueling Details</h2>
+        <div
+            id="tokenDetails"
+            class="card token-details"
+        >
 
-            <p>
-                <strong>Token:</strong>
-                <span id="detailToken"></span>
-            </p>
+            <div class="token-header">
 
-            <p>
-                <strong>Vehicle:</strong>
-                <span id="detailVehicle"></span>
-            </p>
+                <h3 style="margin: 0; color: #0f5132;">
+                    3. Refueling Details
+                </h3>
 
-            <p>
-                <strong>Fuel:</strong>
-                <span id="detailFuel"></span>
-            </p>
+                <span class="authorized-badge">
+                    AUTHORIZED
+                </span>
 
-            <p>
-                <strong>Amount:</strong>
-                ₹<span id="detailAmount"></span>
-            </p>
+            </div>
 
-            <p>
-                <strong>Pump:</strong>
-                Pump <span id="detailPump"></span>
-            </p>
 
-            <p>
-                <strong>Status:</strong>
-                <span id="detailStatus">AUTHORIZED</span>
-            </p>
+            <div class="details-grid">
 
-            <br>
+                <div class="detail-box">
+                    <span class="detail-label">Token</span>
+                    <span
+                        class="detail-value"
+                        id="detailToken"
+                    ></span>
+                </div>
 
-            <button id="completeButton">
+
+                <div class="detail-box">
+                    <span class="detail-label">Vehicle</span>
+                    <span
+                        class="detail-value"
+                        id="detailVehicle"
+                    ></span>
+                </div>
+
+
+                <div class="detail-box">
+                    <span class="detail-label">Fuel Type</span>
+                    <span
+                        class="detail-value"
+                        id="detailFuel"
+                    ></span>
+                </div>
+
+
+                <div class="detail-box">
+                    <span class="detail-label">Amount</span>
+                    <span class="detail-value">
+                        ₹<span id="detailAmount"></span>
+                    </span>
+                </div>
+
+
+                <div class="detail-box">
+                    <span class="detail-label">Assigned Pump</span>
+                    <span class="detail-value">
+                        Pump <span id="detailPump"></span>
+                    </span>
+                </div>
+
+
+                <div class="detail-box">
+                    <span class="detail-label">Token Status</span>
+                    <span
+                        class="detail-value"
+                        id="detailStatus"
+                    >
+                        AUTHORIZED
+                    </span>
+                </div>
+
+            </div>
+
+
+            <button
+                id="completeButton"
+                class="complete-button"
+            >
                 Mark Refueling Done — Expire Token
             </button>
 
         </div>
 
+
+        <div class="workflow-note">
+            FuelFlow Pro • Operator workflow
+        </div>
+
     </main>
 
+
+    <!-- ================= JAVASCRIPT ================= -->
 
     <script>
 
@@ -290,341 +716,481 @@
         let html5QrCode = null;
 
 
-// Start QR scanner
-document.getElementById("startScannerButton").addEventListener("click", async function () {
+        // =========================================================
+        // START QR SCANNER
+        // =========================================================
 
-    try {
+        document
+            .getElementById("startScannerButton")
+            .addEventListener("click", async function () {
 
-        html5QrCode = new Html5Qrcode("reader");
+                try {
 
-        const config = {
-            fps: 10,
-            qrbox: {
-                width: 250,
-                height: 250
-            }
-        };
+                    html5QrCode = new Html5Qrcode("reader");
 
-        await html5QrCode.start(
-            { facingMode: "environment" },
-            config,
-            function (decodedText) {
+                    const config = {
+                        fps: 10,
+                        qrbox: {
+                            width: 250,
+                            height: 250
+                        }
+                    };
 
-                document.getElementById("tokenCode").value =
-                    decodedText.trim();
+                    await html5QrCode.start(
+                        { facingMode: "environment" },
+                        config,
 
-                showMessage(
-                    "QR scanned successfully. Token detected: " + decodedText,
-                    "success"
-                );
+                        function (decodedText) {
+
+                            document
+                                .getElementById("tokenCode")
+                                .value = decodedText.trim();
+
+                            showMessage(
+                                "QR scanned successfully. Token detected: " +
+                                decodedText,
+                                "success"
+                            );
+
+                            stopScanner();
+
+                        },
+
+                        function (errorMessage) {
+                            // QR not detected yet.
+                        }
+                    );
+
+                    document
+                        .getElementById("startScannerButton")
+                        .style.display = "none";
+
+                    document
+                        .getElementById("stopScannerButton")
+                        .style.display = "block";
+
+                }
+
+                catch (error) {
+
+                    console.error(error);
+
+                    showMessage(
+                        "Could not start camera. Please allow camera permission.",
+                        "error"
+                    );
+
+                }
+
+            });
+
+
+        // =========================================================
+        // STOP QR SCANNER
+        // =========================================================
+
+        document
+            .getElementById("stopScannerButton")
+            .addEventListener("click", function () {
 
                 stopScanner();
 
-            },
-            function (errorMessage) {
-                // QR not detected yet. Keep scanning.
-            }
-        );
-
-        document.getElementById("startScannerButton").style.display =
-            "none";
-
-        document.getElementById("stopScannerButton").style.display =
-            "block";
-
-    }
-
-    catch (error) {
-
-        console.error(error);
-
-        showMessage(
-            "Could not start camera. Please allow camera permission.",
-            "error"
-        );
-
-    }
-
-});
-
-
-// Stop QR scanner
-document.getElementById("stopScannerButton").addEventListener("click", function () {
-
-    stopScanner();
-
-});
-
-
-async function stopScanner() {
-
-    if (html5QrCode) {
-
-        try {
-
-            await html5QrCode.stop();
-            html5QrCode.clear();
-
-        }
-
-        catch (error) {
-
-            console.error("Scanner stop error:", error);
-
-        }
-
-        html5QrCode = null;
-
-    }
-
-    document.getElementById("startScannerButton").style.display =
-        "block";
-
-    document.getElementById("stopScannerButton").style.display =
-        "none";
-
-}
-
-
-        // Select physical pump
-        document.querySelectorAll(".pump").forEach(function (pump) {
-
-            pump.addEventListener("click", function () {
-
-                const status = pump.querySelector(".status").textContent;
-
-                if (status !== "AVAILABLE") {
-                    showMessage(
-                        "This pump is currently busy.",
-                        "error"
-                    );
-
-                    return;
-                }
-
-                document.querySelectorAll(".pump").forEach(function (item) {
-                    item.classList.remove("selected");
-                });
-
-                pump.classList.add("selected");
-
-                selectedPump = pump.dataset.pump;
-
-                showMessage(
-                    "Pump " + selectedPump + " selected.",
-                    "success"
-                );
             });
 
-        });
 
+        async function stopScanner() {
 
-        // Scan / verify token
-        document.getElementById("scanButton").addEventListener("click", async function () {
+            if (html5QrCode) {
 
-            const tokenCode = document
-                .getElementById("tokenCode")
-                .value
-                .trim();
+                try {
 
-            if (!selectedPump) {
-                showMessage(
-                    "Please select the physical pump first.",
-                    "error"
-                );
+                    await html5QrCode.stop();
+                    html5QrCode.clear();
 
-                return;
+                }
+
+                catch (error) {
+
+                    console.error(
+                        "Scanner stop error:",
+                        error
+                    );
+
+                }
+
+                html5QrCode = null;
+
             }
 
-            if (!tokenCode) {
-                showMessage(
-                    "Please enter or scan a token.",
-                    "error"
-                );
+            document
+                .getElementById("startScannerButton")
+                .style.display = "block";
 
-                return;
-            }
+            document
+                .getElementById("stopScannerButton")
+                .style.display = "none";
+
+        }
 
 
-            try {
+        // =========================================================
+        // SELECT PHYSICAL PUMP
+        // =========================================================
 
-                const response = await fetch("/api/operator/scan", {
+        document
+            .querySelectorAll(".pump")
+            .forEach(function (pump) {
 
-                    method: "POST",
+                pump.addEventListener("click", function () {
 
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    /*
+                     * IMPORTANT:
+                     * trim() removes the spaces/newlines around
+                     * AVAILABLE from the HTML.
+                     */
+                    const status =
+                        pump
+                            .querySelector(".status")
+                            .textContent
+                            .trim();
 
-                    body: JSON.stringify({
-                        token_code: tokenCode,
-                        pump_number: selectedPump
-                    })
+
+                    if (status !== "AVAILABLE") {
+
+                        showMessage(
+                            "This pump is currently busy.",
+                            "error"
+                        );
+
+                        return;
+
+                    }
+
+
+                    document
+                        .querySelectorAll(".pump")
+                        .forEach(function (item) {
+
+                            item.classList.remove("selected");
+
+                        });
+
+
+                    pump.classList.add("selected");
+
+                    selectedPump =
+                        pump.dataset.pump;
+
+
+                    showMessage(
+                        "Pump " +
+                        selectedPump +
+                        " selected.",
+                        "success"
+                    );
 
                 });
 
+            });
 
-                const data = await response.json();
+
+        // =========================================================
+        // VERIFY TOKEN / ASSIGN PUMP
+        // =========================================================
+
+        document
+            .getElementById("scanButton")
+            .addEventListener("click", async function () {
+
+                const tokenCode =
+                    document
+                        .getElementById("tokenCode")
+                        .value
+                        .trim();
 
 
-                if (!response.ok) {
+                if (!selectedPump) {
 
                     showMessage(
-                        data.error || "Token verification failed.",
+                        "Please select the physical pump first.",
                         "error"
                     );
 
                     return;
+
                 }
 
 
-                authorizedToken = data.token.token_code;
-
-
-                document.getElementById("detailToken").textContent =
-                    data.token.token_code;
-
-                document.getElementById("detailVehicle").textContent =
-                    data.token.vehicle_number;
-
-                document.getElementById("detailFuel").textContent =
-                    data.token.fuel_type;
-
-                document.getElementById("detailAmount").textContent =
-                    data.token.amount;
-
-                document.getElementById("detailPump").textContent =
-                    data.token.pump_number;
-
-                document.getElementById("detailStatus").textContent =
-                    data.token.status;
-
-
-                document.getElementById("tokenDetails").style.display =
-                    "block";
-
-
-                document.getElementById("status" + selectedPump).textContent =
-                    "BUSY";
-
-
-                showMessage(
-                    "Token verified. Pump " + selectedPump + " is now BUSY.",
-                    "success"
-                );
-
-            }
-
-            catch (error) {
-
-                console.error(error);
-
-                showMessage(
-                    "Could not connect to the FuelFlow server.",
-                    "error"
-                );
-
-            }
-
-        });
-
-
-        // Complete refueling
-        document.getElementById("completeButton").addEventListener("click", async function () {
-
-            if (!authorizedToken) {
-
-                showMessage(
-                    "No authorized token found.",
-                    "error"
-                );
-
-                return;
-            }
-
-
-            try {
-
-                const response = await fetch("/api/operator/complete", {
-
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        token_code: authorizedToken
-                    })
-
-                });
-
-
-                const data = await response.json();
-
-
-                if (!response.ok) {
+                if (!tokenCode) {
 
                     showMessage(
-                        data.error || "Could not complete refueling.",
+                        "Please enter or scan a token.",
                         "error"
                     );
 
                     return;
+
                 }
 
 
-                document.getElementById("status" + selectedPump).textContent =
-                    "AVAILABLE";
+                try {
+
+                    const response =
+                        await fetch("/api/operator/scan", {
+
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+
+                            body: JSON.stringify({
+
+                                token_code: tokenCode,
+
+                                pump_number: selectedPump
+
+                            })
+
+                        });
 
 
-                document.getElementById("tokenDetails").style.display =
-                    "none";
+                    const data =
+                        await response.json();
 
 
-                document.getElementById("tokenCode").value = "";
+                    if (!response.ok) {
+
+                        showMessage(
+                            data.error ||
+                            "Token verification failed.",
+                            "error"
+                        );
+
+                        return;
+
+                    }
 
 
-                showMessage(
-                    "Refueling completed. Token expired and Pump " +
-                    selectedPump +
-                    " is AVAILABLE.",
-                    "success"
-                );
+                    authorizedToken =
+                        data.token.token_code;
 
 
-                document.querySelectorAll(".pump").forEach(function (item) {
-                    item.classList.remove("selected");
-                });
+                    document
+                        .getElementById("detailToken")
+                        .textContent =
+                        data.token.token_code;
 
 
-                selectedPump = null;
-                authorizedToken = null;
+                    document
+                        .getElementById("detailVehicle")
+                        .textContent =
+                        data.token.vehicle_number;
 
-            }
 
-            catch (error) {
+                    document
+                        .getElementById("detailFuel")
+                        .textContent =
+                        data.token.fuel_type;
 
-                console.error(error);
 
-                showMessage(
-                    "Could not connect to the FuelFlow server.",
-                    "error"
-                );
+                    document
+                        .getElementById("detailAmount")
+                        .textContent =
+                        data.token.amount;
 
-            }
 
-        });
+                    document
+                        .getElementById("detailPump")
+                        .textContent =
+                        data.token.pump_number;
 
+
+                    document
+                        .getElementById("detailStatus")
+                        .textContent =
+                        data.token.status;
+
+
+                    document
+                        .getElementById("tokenDetails")
+                        .style.display = "block";
+
+
+                    document
+                        .getElementById(
+                            "status" + selectedPump
+                        )
+                        .textContent = "BUSY";
+
+
+                    document
+                        .querySelector(
+                            '[data-pump="' + selectedPump + '"]'
+                        )
+                        .classList.add("busy");
+
+
+                    showMessage(
+                        "Token verified. Pump " +
+                        selectedPump +
+                        " is now BUSY.",
+                        "success"
+                    );
+
+                }
+
+                catch (error) {
+
+                    console.error(error);
+
+                    showMessage(
+                        "Could not connect to the FuelFlow server.",
+                        "error"
+                    );
+
+                }
+
+            });
+
+
+        // =========================================================
+        // COMPLETE REFUELING
+        // =========================================================
+
+        document
+            .getElementById("completeButton")
+            .addEventListener("click", async function () {
+
+                if (!authorizedToken) {
+
+                    showMessage(
+                        "No authorized token found.",
+                        "error"
+                    );
+
+                    return;
+
+                }
+
+
+                try {
+
+                    const response =
+                        await fetch(
+                            "/api/operator/complete",
+                            {
+                                method: "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json"
+                                },
+
+                                body: JSON.stringify({
+
+                                    token_code:
+                                        authorizedToken
+
+                                })
+
+                            }
+                        );
+
+
+                    const data =
+                        await response.json();
+
+
+                    if (!response.ok) {
+
+                        showMessage(
+                            data.error ||
+                            "Could not complete refueling.",
+                            "error"
+                        );
+
+                        return;
+
+                    }
+
+
+                    document
+                        .getElementById(
+                            "status" + selectedPump
+                        )
+                        .textContent = "AVAILABLE";
+
+
+                    document
+                        .querySelector(
+                            '[data-pump="' + selectedPump + '"]'
+                        )
+                        .classList.remove("busy");
+
+
+                    document
+                        .getElementById("tokenDetails")
+                        .style.display = "none";
+
+
+                    document
+                        .getElementById("tokenCode")
+                        .value = "";
+
+
+                    showMessage(
+                        "Refueling completed. Token expired and Pump " +
+                        selectedPump +
+                        " is AVAILABLE.",
+                        "success"
+                    );
+
+
+                    document
+                        .querySelectorAll(".pump")
+                        .forEach(function (item) {
+
+                            item.classList.remove("selected");
+
+                        });
+
+
+                    selectedPump = null;
+                    authorizedToken = null;
+
+                }
+
+                catch (error) {
+
+                    console.error(error);
+
+                    showMessage(
+                        "Could not connect to the FuelFlow server.",
+                        "error"
+                    );
+
+                }
+
+            });
+
+
+        // =========================================================
+        // MESSAGE FUNCTION
+        // =========================================================
 
         function showMessage(message, type) {
 
-            const messageBox = document.getElementById("message");
+            const messageBox =
+                document.getElementById("message");
+
 
             messageBox.textContent = message;
 
+
             messageBox.className =
                 "message " + type;
+
 
             messageBox.style.display = "block";
 
