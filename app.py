@@ -1,3 +1,5 @@
+# FuelFlow Pro development checkpoint
+
 from flask import Flask, jsonify, request, render_template
 from database.database import initialize_database, get_connection
 from datetime import datetime
