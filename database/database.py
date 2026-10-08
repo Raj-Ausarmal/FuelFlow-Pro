@@ -51,6 +51,15 @@ def initialize_database():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS customers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+
     for pump_number in range(1, 4):
         cursor.execute("""
             INSERT OR IGNORE INTO pumps (pump_number, status)
