@@ -56,9 +56,28 @@ def initialize_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            full_name TEXT,
+            email TEXT,
+            phone TEXT,
             created_at TEXT NOT NULL
         )
     """)
+
+    # Safely add profile fields to existing databases.
+    customer_columns = {
+        row["name"]
+        for row in cursor.execute("PRAGMA table_info(customers)").fetchall()
+    }
+
+    for column, definition in [
+        ("full_name", "TEXT"),
+        ("email", "TEXT"),
+        ("phone", "TEXT"),
+    ]:
+        if column not in customer_columns:
+            cursor.execute(
+                f"ALTER TABLE customers ADD COLUMN {column} {definition}"
+            )
 
     for pump_number in range(1, 4):
         cursor.execute("""
@@ -68,8 +87,3 @@ def initialize_database():
 
     connection.commit()
     connection.close()
-
-
-if __name__ == "__main__":
-    initialize_database()
-    print("FuelFlow database initialized successfully.")

@@ -237,12 +237,144 @@ def customer_logout():
     return redirect(url_for("customer_login"))
 
 
+
+@app.route("/customer-profile")
+@customer_required
+def customer_profile_page():
+    return render_template("customer_profile.html")
+
+
 @app.route("/api/customer/profile", methods=["GET"])
 @customer_required
 def customer_profile():
-    return jsonify({
-        "username": session.get("customer_username")
-    }), 200
+    connection = get_connection()
+
+    customer = connection.execute("""
+        SELECT username, full_name, email, phone, created_at
+        FROM customers
+        WHERE id = ?
+    """, (session["customer_id"],)).fetchone()
+
+    connection.close()
+
+    if customer is None:
+        session.clear()
+        return jsonify({"error": "Customer account not found"}), 404
+
+    return jsonify(dict(customer)), 200
+
+
+@app.route("/api/customer/profile", methods=["PUT"])
+@customer_required
+def update_customer_profile():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Valid JSON data is required"}), 400
+
+    full_name = data.get("full_name", "")
+    email = data.get("email", "")
+    phone = data.get("phone", "")
+
+    if not all(isinstance(value, str) for value in [full_name, email, phone]):
+        return jsonify({"error": "Profile fields must be text"}), 400
+
+    full_name = full_name.strip()
+    email = email.strip().lower()
+    phone = phone.strip()
+
+    if len(full_name) > 100:
+        return jsonify({"error": "Name must be 100 characters or fewer"}), 400
+
+    if len(email) > 254 or len(phone) > 20:
+        return jsonify({"error": "Email or phone number is too long"}), 400
+
+    if email and ("@" not in email or email.startswith("@") or email.endswith("@")):
+        return jsonify({"error": "Enter a valid email address"}), 400
+
+    connection = get_connection()
+
+    try:
+        connection.execute("""
+            UPDATE customers
+            SET full_name = ?, email = ?, phone = ?
+            WHERE id = ?
+        """, (
+            full_name or None,
+            email or None,
+            phone or None,
+            session["customer_id"]
+        ))
+
+        connection.commit()
+
+    finally:
+        connection.close()
+
+    return jsonify({"message": "Profile updated successfully"}), 200
+
+
+@app.route("/api/customer/change-password", methods=["POST"])
+@customer_required
+def change_customer_password():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Valid JSON data is required"}), 400
+
+    current_password = data.get("current_password")
+    new_password = data.get("new_password")
+    confirm_password = data.get("confirm_password")
+
+    if not all(isinstance(value, str) and value for value in [
+        current_password, new_password, confirm_password
+    ]):
+        return jsonify({"error": "All password fields are required"}), 400
+
+    if len(new_password) < 8:
+        return jsonify({
+            "error": "New password must contain at least 8 characters"
+        }), 400
+
+    if len(new_password) > 256:
+        return jsonify({"error": "New password is too long"}), 400
+
+    if new_password != confirm_password:
+        return jsonify({"error": "New passwords do not match"}), 400
+
+    connection = get_connection()
+
+    try:
+        customer = connection.execute("""
+            SELECT password_hash
+            FROM customers
+            WHERE id = ?
+        """, (session["customer_id"],)).fetchone()
+
+        if customer is None:
+            session.clear()
+            return jsonify({"error": "Customer account not found"}), 404
+
+        if not check_password_hash(
+            customer["password_hash"], current_password
+        ):
+            return jsonify({"error": "Current password is incorrect"}), 400
+
+        connection.execute("""
+            UPDATE customers
+            SET password_hash = ?
+            WHERE id = ?
+        """, (
+            generate_password_hash(new_password),
+            session["customer_id"]
+        ))
+
+        connection.commit()
+
+    finally:
+        connection.close()
+
+    return jsonify({"message": "Password changed successfully"}), 200
 
 
 @app.route("/login")

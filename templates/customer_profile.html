@@ -1,0 +1,280 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Settings - FuelFlow Pro</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7f5;
+            color: #1f2937;
+        }
+
+        header {
+            background: #0f5132;
+            color: white;
+            padding: 18px 24px;
+        }
+
+        .header-content {
+            max-width: 900px;
+            margin: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        h1 { margin: 0; font-size: 25px; }
+
+        nav { display: flex; gap: 12px; }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        main {
+            max-width: 760px;
+            margin: 30px auto;
+            padding: 0 16px 35px;
+        }
+
+        .intro { margin-bottom: 22px; }
+        .intro h2 { color: #0f5132; margin-bottom: 7px; }
+        .intro p { color: #6b7280; }
+
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 14px;
+            box-shadow: 0 5px 20px rgba(0,0,0,.06);
+            margin-bottom: 22px;
+        }
+
+        .card h3 { color: #0f5132; margin-top: 0; }
+
+        label {
+            display: block;
+            margin: 16px 0 7px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        input:focus {
+            outline: 2px solid #a7d9bb;
+            border-color: #198754;
+        }
+
+        button {
+            width: 100%;
+            padding: 13px;
+            margin-top: 20px;
+            border: 0;
+            border-radius: 8px;
+            background: #198754;
+            color: white;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        button:hover { background: #146c43; }
+
+        .message {
+            display: none;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .success { display: block; background: #d1fae5; color: #065f46; }
+        .error { display: block; background: #fee2e2; color: #991b1b; }
+
+        .username-note {
+            padding: 12px;
+            background: #f8faf9;
+            border-radius: 8px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        @media (max-width: 500px) {
+            .card { padding: 18px; }
+            .header-content { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>FuelFlow Pro</h1>
+            <nav>
+                <a href="/customer-dashboard">Dashboard</a>
+                <a href="/customer-logout">Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="intro">
+            <h2>Account Settings</h2>
+            <p>Manage your personal details and keep your account secure.</p>
+        </div>
+
+        <section class="card">
+            <h3>Personal Information</h3>
+            <div class="username-note">
+                Username: <strong id="username">Loading...</strong>
+                <br><br>
+                Your username cannot be changed here.
+            </div>
+
+            <form id="profileForm">
+                <label for="fullName">Full Name</label>
+                <input id="fullName" name="full_name" maxlength="100" autocomplete="name">
+
+                <label for="email">Email Address</label>
+                <input id="email" name="email" type="email" maxlength="254" autocomplete="email">
+
+                <label for="phone">Phone Number</label>
+                <input id="phone" name="phone" type="tel" maxlength="20" autocomplete="tel">
+
+                <button type="submit">Save Profile</button>
+            </form>
+            <div id="profileMessage" class="message" role="status"></div>
+        </section>
+
+        <section class="card">
+            <h3>Change Password</h3>
+            <p>Enter your current password before choosing a new one.</p>
+
+            <form id="passwordForm">
+                <label for="currentPassword">Current Password</label>
+                <input id="currentPassword" type="password" autocomplete="current-password" required>
+
+                <label for="newPassword">New Password</label>
+                <input id="newPassword" type="password" minlength="8" maxlength="256" autocomplete="new-password" required>
+
+                <label for="confirmPassword">Confirm New Password</label>
+                <input id="confirmPassword" type="password" minlength="8" maxlength="256" autocomplete="new-password" required>
+
+                <button type="submit">Change Password</button>
+            </form>
+            <div id="passwordMessage" class="message" role="status"></div>
+        </section>
+    </main>
+
+    <script>
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = "message " + type;
+        }
+
+        async function loadProfile() {
+            try {
+                const response = await fetch("/api/customer/profile");
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showMessage("profileMessage", data.error || "Could not load profile.", "error");
+                    return;
+                }
+
+                document.getElementById("username").textContent = data.username || "";
+                document.getElementById("fullName").value = data.full_name || "";
+                document.getElementById("email").value = data.email || "";
+                document.getElementById("phone").value = data.phone || "";
+            } catch (error) {
+                showMessage("profileMessage", "Could not connect to the server.", "error");
+            }
+        }
+
+        document.getElementById("profileForm").addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const payload = {
+                full_name: document.getElementById("fullName").value,
+                email: document.getElementById("email").value,
+                phone: document.getElementById("phone").value
+            };
+
+            try {
+                const response = await fetch("/api/customer/profile", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showMessage("profileMessage", data.error || "Could not save profile.", "error");
+                    return;
+                }
+
+                showMessage("profileMessage", data.message, "success");
+            } catch (error) {
+                showMessage("profileMessage", "Could not connect to the server.", "error");
+            }
+        });
+
+        document.getElementById("passwordForm").addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const currentPassword = document.getElementById("currentPassword").value;
+            const newPassword = document.getElementById("newPassword").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
+
+            if (newPassword !== confirmPassword) {
+                showMessage("passwordMessage", "New passwords do not match.", "error");
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/customer/change-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showMessage("passwordMessage", data.error || "Could not change password.", "error");
+                    return;
+                }
+
+                showMessage("passwordMessage", data.message, "success");
+                document.getElementById("passwordForm").reset();
+            } catch (error) {
+                showMessage("passwordMessage", "Could not connect to the server.", "error");
+            }
+        });
+
+        loadProfile();
+    </script>
+</body>
+</html>
+
