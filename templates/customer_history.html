@@ -1,0 +1,339 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction History | FuelFlow Pro</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            color: #1f2937;
+        }
+
+        header {
+            background: #102a43;
+            color: white;
+            padding: 18px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        nav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 13px;
+            border-radius: 6px;
+            background: #244765;
+            font-size: 14px;
+        }
+
+        nav a:hover {
+            background: #3576a8;
+        }
+
+        main {
+            max-width: 1250px;
+            margin: 35px auto;
+            padding: 0 20px;
+        }
+
+        .heading {
+            margin-bottom: 22px;
+        }
+
+        .heading h1 {
+            margin-bottom: 8px;
+            color: #102a43;
+        }
+
+        .heading p {
+            color: #64748b;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 850px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 14px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        th {
+            background: #f1f5f9;
+            color: #334155;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-WAITING {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-ASSIGNED,
+        .status-IN_PROGRESS,
+        .status-REFUELING {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .status-EXPIRED,
+        .status-COMPLETED {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-CANCELLED,
+        .status-FAILED {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        #message {
+            text-align: center;
+            padding: 28px;
+            color: #64748b;
+        }
+
+        #error {
+            color: #b91c1c;
+            margin-bottom: 15px;
+        }
+
+        .refresh-button {
+            border: none;
+            background: #147d64;
+            color: white;
+            padding: 11px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        .refresh-button:hover {
+            background: #0f6652;
+        }
+
+        @media (max-width: 600px) {
+            header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            main {
+                margin-top: 22px;
+                padding: 0 12px;
+            }
+
+            .table-container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">FuelFlow Pro</div>
+
+        <nav>
+            <a href="/customer-dashboard">Dashboard</a>
+            <a href="/customer-profile">Profile Settings</a>
+            <a href="/customer-logout">Logout</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="heading">
+            <h1>Transaction History</h1>
+            <p>View your fuel tokens and refueling activity.</p>
+        </div>
+
+        <button class="refresh-button" id="refreshButton">
+            Refresh History
+        </button>
+
+        <div id="error" role="alert"></div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Token Code</th>
+                        <th>Vehicle</th>
+                        <th>Fuel Type</th>
+                        <th>Amount</th>
+                        <th>Pump</th>
+                        <th>Created At</th>
+                        <th>Completed At</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody id="historyBody"></tbody>
+            </table>
+
+            <div id="message">Loading transaction history...</div>
+        </div>
+    </main>
+
+    <script>
+        const historyBody = document.getElementById("historyBody");
+        const message = document.getElementById("message");
+        const errorBox = document.getElementById("error");
+
+        function formatDate(value) {
+            if (!value) return "—";
+
+            const date = new Date(value);
+
+            if (Number.isNaN(date.getTime())) {
+                return value;
+            }
+
+            return date.toLocaleString();
+        }
+
+        function createCell(value) {
+            const cell = document.createElement("td");
+            cell.textContent =
+                value === null || value === undefined || value === ""
+                    ? "—"
+                    : String(value);
+            return cell;
+        }
+
+        async function loadHistory() {
+            historyBody.replaceChildren();
+            errorBox.textContent = "";
+            message.textContent = "Loading transaction history...";
+            message.style.display = "block";
+
+            try {
+                const response = await fetch(
+                    "/api/customer/transactions"
+                );
+
+                if (response.status === 401) {
+                    window.location.href = "/customer-login";
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.error || "Could not load transaction history."
+                    );
+                }
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    message.textContent =
+                        "No transaction history found. Generate a fuel token to get started.";
+                    return;
+                }
+
+                message.style.display = "none";
+
+                data.forEach(transaction => {
+                    const row = document.createElement("tr");
+
+                    row.appendChild(createCell(transaction.token_code));
+                    row.appendChild(createCell(transaction.vehicle_number));
+                    row.appendChild(createCell(transaction.fuel_type));
+
+                    const amount = Number(transaction.amount);
+                    row.appendChild(
+                        createCell(
+                            Number.isFinite(amount)
+                                ? "₹" + amount.toFixed(2)
+                                : transaction.amount
+                        )
+                    );
+
+                    row.appendChild(createCell(transaction.pump_number));
+                    row.appendChild(createCell(
+                        formatDate(transaction.created_at)
+                    ));
+
+                    row.appendChild(createCell(
+                        formatDate(
+                            transaction.transaction_completed_at ||
+                            transaction.completed_at
+                        )
+                    ));
+
+                    const statusCell = document.createElement("td");
+                    const badge = document.createElement("span");
+                    const status = String(
+                        transaction.status || "UNKNOWN"
+                    ).toUpperCase();
+
+                    badge.className = "status status-" +
+                        status.replace(/[^A-Z0-9_-]/g, "");
+
+                    badge.textContent = status;
+                    statusCell.appendChild(badge);
+                    row.appendChild(statusCell);
+
+                    historyBody.appendChild(row);
+                });
+
+            } catch (error) {
+                message.textContent = "";
+                errorBox.textContent =
+                    error.message || "An error occurred while loading history.";
+            }
+        }
+
+        document.getElementById("refreshButton").addEventListener(
+            "click",
+            loadHistory
+        );
+
+        loadHistory();
+    </script>
+</body>
+</html>

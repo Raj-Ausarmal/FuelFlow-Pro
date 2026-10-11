@@ -1,3 +1,4 @@
+
 import sqlite3
 from pathlib import Path
 
@@ -34,7 +35,8 @@ def initialize_database():
             status TEXT NOT NULL DEFAULT 'WAITING',
             created_at TEXT NOT NULL,
             scanned_at TEXT,
-            completed_at TEXT
+            completed_at TEXT,
+            customer_id INTEGER
         )
     """)
 
@@ -63,10 +65,12 @@ def initialize_database():
         )
     """)
 
-    # Safely add profile fields to existing databases.
+    # Safely migrate existing databases.
     customer_columns = {
         row["name"]
-        for row in cursor.execute("PRAGMA table_info(customers)").fetchall()
+        for row in cursor.execute(
+            "PRAGMA table_info(customers)"
+        ).fetchall()
     }
 
     for column, definition in [
@@ -79,6 +83,18 @@ def initialize_database():
                 f"ALTER TABLE customers ADD COLUMN {column} {definition}"
             )
 
+    token_columns = {
+        row["name"]
+        for row in cursor.execute(
+            "PRAGMA table_info(tokens)"
+        ).fetchall()
+    }
+
+    if "customer_id" not in token_columns:
+        cursor.execute(
+            "ALTER TABLE tokens ADD COLUMN customer_id INTEGER"
+        )
+
     for pump_number in range(1, 4):
         cursor.execute("""
             INSERT OR IGNORE INTO pumps (pump_number, status)
@@ -87,3 +103,7 @@ def initialize_database():
 
     connection.commit()
     connection.close()
+
+
+if __name__ == "__main__":
+    initialize_database()

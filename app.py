@@ -244,6 +244,13 @@ def customer_profile_page():
     return render_template("customer_profile.html")
 
 
+@app.route("/customer-history")
+@customer_required
+def customer_history_page():
+    return render_template("customer_history.html")
+
+
+
 @app.route("/api/customer/profile", methods=["GET"])
 @customer_required
 def customer_profile():
@@ -375,6 +382,41 @@ def change_customer_password():
         connection.close()
 
     return jsonify({"message": "Password changed successfully"}), 200
+
+
+@app.route("/api/customer/transactions", methods=["GET"])
+@customer_required
+def get_customer_transactions():
+    connection = get_connection()
+
+    try:
+        transactions = connection.execute("""
+            SELECT
+                t.token_code,
+                t.vehicle_number,
+                t.fuel_type,
+                t.amount,
+                t.pump_number,
+                t.status,
+                t.created_at,
+                t.scanned_at,
+                t.completed_at,
+                tr.started_at,
+                tr.completed_at AS transaction_completed_at
+            FROM tokens AS t
+            LEFT JOIN transactions AS tr
+                ON tr.token_code = t.token_code
+            WHERE t.customer_id = ?
+            ORDER BY t.id DESC
+        """, (session["customer_id"],)).fetchall()
+
+        return jsonify([
+            dict(transaction)
+            for transaction in transactions
+        ]), 200
+
+    finally:
+        connection.close()
 
 
 @app.route("/login")
@@ -519,25 +561,27 @@ def create_token():
     created_at = datetime.now().isoformat(timespec="seconds")
 
     connection = get_connection()
-
     connection.execute("""
-        INSERT INTO tokens (
-            token_code,
-            vehicle_number,
-            fuel_type,
-            amount,
-            pump_number,
-            status,
-            created_at
-        )
-        VALUES (?, ?, ?, ?, NULL, 'WAITING', ?)
-    """, (
+    INSERT INTO tokens (
         token_code,
         vehicle_number,
         fuel_type,
         amount,
-        created_at
-    ))
+        pump_number,
+        status,
+        created_at,
+        customer_id
+    )
+    VALUES (?, ?, ?, ?, NULL, 'WAITING', ?, ?)
+""", (
+    token_code,
+    vehicle_number,
+    fuel_type,
+    amount,
+    created_at,
+    session["customer_id"]
+))
+
 
     connection.commit()
     connection.close()
