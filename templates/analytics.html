@@ -1,12 +1,12 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>FuelFlow Pro - Analytics</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
     <style>
         * {
             box-sizing: border-box;
@@ -25,51 +25,15 @@
             padding: 20px 30px;
         }
 
-
-        .refresh-button {
-    background: #0f9d58;
-    color: white;
-    border: none;
-    padding: 11px 18px;
-    border-radius: 7px;
-    cursor: pointer;
-    font-size: 14px;
-    margin-bottom: 20px;
-}
-
-.refresh-button:hover {
-    background: #0b8043;
-}
-
-
-
-
         .header-content {
-    max-width: 1200px;
-    margin: auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-}
-
-nav {
-    display: flex;
-    gap: 10px;
-}
-
-nav a {
-    color: white;
-    text-decoration: none;
-    padding: 9px 14px;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    border-radius: 7px;
-    font-size: 14px;
-}
-
-nav a:hover {
-    background: rgba(255, 255, 255, 0.15);
-}
+            max-width: 1200px;
+            margin: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
 
         header h1 {
             margin: 0;
@@ -81,6 +45,24 @@ nav a:hover {
             opacity: 0.9;
         }
 
+        nav {
+            display: flex;
+            gap: 10px;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 9px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 7px;
+            font-size: 14px;
+        }
+
+        nav a:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
         .container {
             width: 95%;
             max-width: 1200px;
@@ -89,6 +71,64 @@ nav a:hover {
 
         .section-title {
             margin-bottom: 20px;
+        }
+
+        .refresh-button,
+        .filter-button {
+            background: #0f9d58;
+            color: white;
+            border: none;
+            padding: 11px 18px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .refresh-button {
+            margin-bottom: 20px;
+        }
+
+        .refresh-button:hover,
+        .filter-button:hover {
+            background: #0b8043;
+        }
+
+        .clear-button {
+            background: #64748b;
+        }
+
+        .clear-button:hover {
+            background: #475569;
+        }
+
+        .date-filters {
+            display: flex;
+            align-items: end;
+            gap: 14px;
+            flex-wrap: wrap;
+            background: white;
+            padding: 18px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .date-field {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .date-field label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .date-field input {
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
         }
 
         .cards {
@@ -103,6 +143,7 @@ nav a:hover {
             padding: 22px;
             border-radius: 12px;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            min-width: 0;
         }
 
         .card h3 {
@@ -115,6 +156,15 @@ nav a:hover {
             font-size: 28px;
             font-weight: bold;
             color: #0f9d58;
+            overflow-wrap: anywhere;
+        }
+
+        .chart-card {
+            min-height: 300px;
+        }
+
+        .chart-card canvas {
+            max-height: 260px;
         }
 
         .pump-grid {
@@ -154,8 +204,7 @@ nav a:hover {
             margin-top: 15px;
         }
 
-        th,
-        td {
+        th, td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #e5e7eb;
@@ -182,6 +231,12 @@ nav a:hover {
             display: none;
         }
 
+        .filter-summary {
+            color: #64748b;
+            font-size: 14px;
+            margin: 0 0 18px;
+        }
+
         @media (max-width: 900px) {
             .cards {
                 grid-template-columns: repeat(2, 1fr);
@@ -196,9 +251,21 @@ nav a:hover {
             .cards {
                 grid-template-columns: 1fr;
             }
-        }
 
-       
+            .header-content {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .date-filters {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .date-field input {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -206,391 +273,470 @@ nav a:hover {
 
 <header>
     <div class="header-content">
-
         <div>
             <h1>FuelFlow Pro</h1>
-            <p>Transaction History & Analytics Dashboard</p>
+            <p>Transaction History &amp; Analytics Dashboard</p>
         </div>
-      <nav>
-          <a href="/admin" class="active">Analytics Dashboard</a>
-          <a href="/logout">Logout</a>
-      </nav>
+
+        <nav>
+            <a href="/admin" class="active">Analytics Dashboard</a>
+            <a href="/logout">Logout</a>
+        </nav>
     </div>
 </header>
 
-    <div class="container">
+<div class="container">
 
-        <h2 class="section-title">Dashboard Overview</h2>
-        <button id="refreshButton" class="refresh-button">
-    Refresh Dashboard
-</button>
+    <h2 class="section-title">Dashboard Overview</h2>
 
-        <div id="errorMessage" class="error"></div>
-
-        <div class="cards">
-
-            <div class="card">
-                <h3>Total Revenue</h3>
-                <div class="value" id="totalRevenue">₹0</div>
-            </div>
-
-            <div class="card">
-                <h3>Total Transactions</h3>
-                <div class="value" id="totalTransactions">0</div>
-            </div>
-
-            <div class="card">
-                <h3>Petrol Sales</h3>
-                <div class="value" id="petrolSales">₹0</div>
-            </div>
-
-            <div class="card">
-                <h3>Diesel Sales</h3>
-                <div class="value" id="dieselSales">₹0</div>
-            </div>
-
+    <div class="date-filters">
+        <div class="date-field">
+            <label for="startDate">Start Date</label>
+            <input type="date" id="startDate">
         </div>
 
-        <div class="cards">
+        <div class="date-field">
+            <label for="endDate">End Date</label>
+            <input type="date" id="endDate">
+        </div>
 
-    <div class="card">
-        <h3>Fuel Sales Distribution</h3>
-        <canvas id="fuelChart"></canvas>
+        <button type="button" id="applyDateFilter" class="filter-button">
+            Apply Filter
+        </button>
+
+        <button type="button" id="clearDateFilter"
+                class="filter-button clear-button">
+            Clear Filter
+        </button>
     </div>
 
-    <div class="card">
-        <h3>Pump Revenue</h3>
-        <canvas id="pumpChart"></canvas>
+    <p id="filterSummary" class="filter-summary">
+        Showing all available transactions.
+    </p>
+
+    <button id="refreshButton" class="refresh-button">
+        Refresh Dashboard
+    </button>
+
+    <div id="errorMessage" class="error" role="alert"></div>
+
+    <div class="cards">
+        <div class="card">
+            <h3>Total Revenue</h3>
+            <div class="value" id="totalRevenue">₹0</div>
+        </div>
+
+        <div class="card">
+            <h3>Total Transactions</h3>
+            <div class="value" id="totalTransactions">0</div>
+        </div>
+
+        <div class="card">
+            <h3>Petrol Sales</h3>
+            <div class="value" id="petrolSales">₹0</div>
+        </div>
+
+        <div class="card">
+            <h3>Diesel Sales</h3>
+            <div class="value" id="dieselSales">₹0</div>
+        </div>
+    </div>
+
+    <div class="cards">
+        <div class="card chart-card">
+            <h3>Fuel Sales Distribution</h3>
+            <canvas id="fuelChart"></canvas>
+        </div>
+
+        <div class="card chart-card">
+            <h3>Pump Revenue</h3>
+            <canvas id="pumpChart"></canvas>
+        </div>
+    </div>
+
+    <h2 class="section-title">Pump Usage</h2>
+
+    <div class="pump-grid" id="pumpUsage">
+        <div class="loading">Loading pump data...</div>
+    </div>
+
+    <h2 class="section-title">Transaction History</h2>
+
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Token</th>
+                    <th>Vehicle</th>
+                    <th>Fuel</th>
+                    <th>Amount</th>
+                    <th>Pump</th>
+                    <th>Started</th>
+                    <th>Completed</th>
+                </tr>
+            </thead>
+
+            <tbody id="transactionTable">
+                <tr>
+                    <td colspan="8" class="loading">
+                        Loading transactions...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 
 </div>
 
-        <h2 class="section-title">Pump Usage</h2>
+<script>
+    let fuelChartInstance = null;
+    let pumpChartInstance = null;
+    let allTransactions = [];
 
-        <div class="pump-grid" id="pumpUsage">
+    function getSelectedDates() {
+        return {
+            startDate: document.getElementById("startDate").value,
+            endDate: document.getElementById("endDate").value
+        };
+    }
 
-            <div class="loading">
-                Loading pump data...
-            </div>
+    function getAnalyticsUrl() {
+        const { startDate, endDate } = getSelectedDates();
+        const params = new URLSearchParams();
 
-        </div>
-
-        <h2 class="section-title">Transaction History</h2>
-
-        <div class="table-card">
-
-            <table>
-
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Token</th>
-                        <th>Vehicle</th>
-                        <th>Fuel</th>
-                        <th>Amount</th>
-                        <th>Pump</th>
-                        <th>Started</th>
-                        <th>Completed</th>
-                    </tr>
-                </thead>
-
-                <tbody id="transactionTable">
-
-                    <tr>
-                        <td colspan="8" class="loading">
-                            Loading transactions...
-                        </td>
-                    </tr>
-
-                </tbody>
-
-            </table>
-
-        </div>
-
-    </div>
-
-
-    <script>
-
-        async function loadAnalytics() {
-
-            try {
-
-                const response = await fetch("/api/analytics");
-
-                if (!response.ok) {
-                    throw new Error("Failed to load analytics");
-                }
-
-                const data = await response.json();
-
-                document.getElementById("totalRevenue").textContent =
-                    "₹" + data.total_revenue.toLocaleString("en-IN");
-
-                document.getElementById("totalTransactions").textContent =
-                    data.total_transactions;
-
-                document.getElementById("petrolSales").textContent =
-                    "₹" + data.petrol_sales.toLocaleString("en-IN");
-
-                document.getElementById("dieselSales").textContent =
-                    "₹" + data.diesel_sales.toLocaleString("en-IN");
-
-
-                const pumpContainer =
-                    document.getElementById("pumpUsage");
-
-                pumpContainer.innerHTML = "";
-
-
-                for (let pumpNumber = 1; pumpNumber <= 3; pumpNumber++) {
-
-                    const pump =
-                        data.pump_usage.find(
-                            item => item.pump_number === pumpNumber
-                        );
-
-
-                    const transactions =
-                        pump ? pump.transactions : 0;
-
-                    const revenue =
-                        pump ? pump.revenue : 0;
-
-
-                    pumpContainer.innerHTML += `
-                        <div class="pump-card">
-
-                            <h3>Pump ${pumpNumber}</h3>
-
-                            <p>
-                                <strong>Transactions:</strong>
-                                ${transactions}
-                            </p>
-
-                            <p>
-                                <strong>Revenue:</strong>
-                                ₹${revenue.toLocaleString("en-IN")}
-                            </p>
-
-                        </div>
-                    `;
-                }
-
-            }
-
-            catch (error) {
-
-                console.error(error);
-
-                showError("Unable to load analytics data.");
-
-            }
-
+        if (startDate) {
+            params.set("start_date", startDate);
         }
 
-
-        async function loadTransactions() {
-
-            try {
-
-                const response =
-                    await fetch("/api/transactions");
-
-                if (!response.ok) {
-                    throw new Error("Failed to load transactions");
-                }
-
-                const transactions =
-                    await response.json();
-
-
-                const table =
-                    document.getElementById("transactionTable");
-
-                table.innerHTML = "";
-
-
-                if (transactions.length === 0) {
-
-                    table.innerHTML = `
-                        <tr>
-                            <td colspan="8" class="loading">
-                                No transactions found.
-                            </td>
-                        </tr>
-                    `;
-
-                    return;
-                }
-
-
-                transactions.forEach(transaction => {
-
-                    table.innerHTML += `
-                        <tr>
-
-                            <td>${transaction.id}</td>
-
-                            <td>${transaction.token_code}</td>
-
-                            <td>${transaction.vehicle_number}</td>
-
-                            <td>${transaction.fuel_type}</td>
-
-                            <td>
-                                ₹${transaction.amount.toLocaleString("en-IN")}
-                            </td>
-
-                            <td>
-                                Pump ${transaction.pump_number}
-                            </td>
-
-                            <td>${transaction.started_at}</td>
-
-                            <td>${transaction.completed_at}</td>
-
-                        </tr>
-                    `;
-
-                });
-
-            }
-
-            catch (error) {
-
-                console.error(error);
-
-                showError("Unable to load transaction history.");
-
-            }
-
+        if (endDate) {
+            params.set("end_date", endDate);
         }
 
+        const query = params.toString();
 
-        function showError(message) {
+        return "/api/analytics" + (query ? "?" + query : "");
+    }
 
-            const errorBox =
-                document.getElementById("errorMessage");
+    function showError(message) {
+        const errorBox = document.getElementById("errorMessage");
+        errorBox.textContent = message;
+        errorBox.style.display = "block";
+    }
 
-            errorBox.textContent = message;
+    function clearError() {
+        const errorBox = document.getElementById("errorMessage");
+        errorBox.textContent = "";
+        errorBox.style.display = "none";
+    }
 
-            errorBox.style.display = "block";
+    function formatMoney(value) {
+        return "₹" + Number(value || 0).toLocaleString("en-IN");
+    }
 
+    function formatDate(value) {
+        if (!value) return "—";
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return String(value);
         }
 
+        return date.toLocaleString("en-IN");
+    }
 
-        async function loadCharts() {
+    function getTransactionDate(transaction) {
+        // Match analytics filtering, which uses completed_at.
+        const value = transaction.completed_at;
 
-    try {
+        if (!value) return null;
 
-        const response = await fetch("/api/analytics");
+        const date = new Date(value);
+
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function filterTransactions(transactions) {
+        const { startDate, endDate } = getSelectedDates();
+
+        return transactions.filter(transaction => {
+            const date = getTransactionDate(transaction);
+
+            // Exclude records without a completion date when a date
+            // filter is active, matching the analytics API.
+            if (!date) {
+                return !startDate && !endDate;
+            }
+
+            const transactionDay = [
+                date.getFullYear(),
+                String(date.getMonth() + 1).padStart(2, "0"),
+                String(date.getDate()).padStart(2, "0")
+            ].join("-");
+
+            if (startDate && transactionDay < startDate) {
+                return false;
+            }
+
+            if (endDate && transactionDay > endDate) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    function updateFilterSummary() {
+        const { startDate, endDate } = getSelectedDates();
+        const summary = document.getElementById("filterSummary");
+
+        if (!startDate && !endDate) {
+            summary.textContent = "Showing all available transactions.";
+        } else {
+            summary.textContent =
+                "Filtered period: " +
+                (startDate || "Beginning") +
+                " to " +
+                (endDate || "Today");
+        }
+    }
+
+    async function loadAnalytics() {
+        const response = await fetch(getAnalyticsUrl());
 
         if (!response.ok) {
-            throw new Error("Failed to load chart data");
+            let message = "Failed to load analytics.";
+
+            try {
+                const errorData = await response.json();
+                message = errorData.error || message;
+            } catch (_) {}
+
+            throw new Error(message);
         }
 
         const data = await response.json();
 
+        document.getElementById("totalRevenue").textContent =
+            formatMoney(data.total_revenue);
 
-        // Petrol vs Diesel Chart
-        new Chart(document.getElementById("fuelChart"), {
+        document.getElementById("totalTransactions").textContent =
+            data.total_transactions;
 
-            type: "doughnut",
+        document.getElementById("petrolSales").textContent =
+            formatMoney(data.petrol_sales);
 
-            data: {
-                labels: ["Petrol", "Diesel"],
+        document.getElementById("dieselSales").textContent =
+            formatMoney(data.diesel_sales);
 
-                datasets: [{
-                    data: [
-                        data.petrol_sales,
-                        data.diesel_sales
-                    ]
-                }]
-            },
+        const pumpContainer = document.getElementById("pumpUsage");
+        pumpContainer.replaceChildren();
 
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: "bottom"
+        for (let pumpNumber = 1; pumpNumber <= 3; pumpNumber++) {
+            const pump = data.pump_usage.find(
+                item => Number(item.pump_number) === pumpNumber
+            );
+
+            const card = document.createElement("div");
+            card.className = "pump-card";
+
+            const heading = document.createElement("h3");
+            heading.textContent = "Pump " + pumpNumber;
+
+            const transactions = document.createElement("p");
+            transactions.textContent =
+                "Transactions: " + (pump ? pump.transactions : 0);
+
+            const revenue = document.createElement("p");
+            revenue.textContent =
+                "Revenue: " + formatMoney(pump ? pump.revenue : 0);
+
+            card.append(heading, transactions, revenue);
+            pumpContainer.appendChild(card);
+        }
+
+        updateCharts(data);
+    }
+
+    function updateCharts(data) {
+        if (fuelChartInstance) {
+            fuelChartInstance.destroy();
+        }
+
+        if (pumpChartInstance) {
+            pumpChartInstance.destroy();
+        }
+
+        fuelChartInstance = new Chart(
+            document.getElementById("fuelChart"),
+            {
+                type: "doughnut",
+                data: {
+                    labels: ["Petrol", "Diesel"],
+                    datasets: [{
+                        data: [
+                            data.petrol_sales,
+                            data.diesel_sales
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: "bottom"
+                        }
                     }
                 }
             }
+        );
 
-        });
-
-
-        // Pump Revenue Chart
         const pumpLabels = [];
         const pumpRevenue = [];
 
         for (let pumpNumber = 1; pumpNumber <= 3; pumpNumber++) {
-
             const pump = data.pump_usage.find(
-                item => item.pump_number === pumpNumber
+                item => Number(item.pump_number) === pumpNumber
             );
 
             pumpLabels.push("Pump " + pumpNumber);
-
-            pumpRevenue.push(
-                pump ? pump.revenue : 0
-            );
+            pumpRevenue.push(pump ? pump.revenue : 0);
         }
 
-
-        new Chart(document.getElementById("pumpChart"), {
-
-            type: "bar",
-
-            data: {
-                labels: pumpLabels,
-
-                datasets: [{
-                    label: "Revenue",
-                    data: pumpRevenue
-                }]
-            },
-
-            options: {
-                responsive: true,
-
-                scales: {
-                    y: {
-                        beginAtZero: true
+        pumpChartInstance = new Chart(
+            document.getElementById("pumpChart"),
+            {
+                type: "bar",
+                data: {
+                    labels: pumpLabels,
+                    datasets: [{
+                        label: "Revenue",
+                        data: pumpRevenue
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
                     }
                 }
             }
+        );
+    }
 
+    async function loadTransactions() {
+        const response = await fetch("/api/transactions");
+
+        if (!response.ok) {
+            throw new Error("Failed to load transactions.");
+        }
+
+        const transactions = await response.json();
+
+        if (!Array.isArray(transactions)) {
+            throw new Error("Invalid transaction response.");
+        }
+
+        allTransactions = transactions;
+        renderTransactions();
+    }
+
+    function renderTransactions() {
+        const table = document.getElementById("transactionTable");
+        const filteredTransactions = filterTransactions(allTransactions);
+
+        table.replaceChildren();
+
+        if (filteredTransactions.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 8;
+            cell.className = "loading";
+            cell.textContent = "No transactions found for this date range.";
+
+            row.appendChild(cell);
+            table.appendChild(row);
+            return;
+        }
+
+        filteredTransactions.forEach(transaction => {
+            const row = document.createElement("tr");
+
+            const values = [
+                transaction.id,
+                transaction.token_code,
+                transaction.vehicle_number,
+                transaction.fuel_type,
+                formatMoney(transaction.amount),
+                transaction.pump_number
+                    ? "Pump " + transaction.pump_number
+                    : "—",
+                formatDate(transaction.started_at),
+                formatDate(transaction.completed_at)
+            ];
+
+            values.forEach(value => {
+                const cell = document.createElement("td");
+                cell.textContent =
+                    value === null || value === undefined || value === ""
+                        ? "—"
+                        : String(value);
+
+                row.appendChild(cell);
+            });
+
+            table.appendChild(row);
         });
-
     }
 
-    catch (error) {
+    async function refreshDashboard() {
+        clearError();
+        updateFilterSummary();
 
-        console.error("Chart error:", error);
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
 
+        if (startDate && endDate && startDate > endDate) {
+            showError("Start date cannot be after end date.");
+            return;
+        }
+
+        try {
+            await Promise.all([
+                loadAnalytics(),
+                loadTransactions()
+            ]);
+        } catch (error) {
+            console.error(error);
+            showError(error.message || "Unable to load dashboard data.");
+        }
     }
 
-}
+    document.getElementById("applyDateFilter").addEventListener(
+        "click",
+        refreshDashboard
+    );
 
+    document.getElementById("clearDateFilter").addEventListener(
+        "click",
+        function () {
+            document.getElementById("startDate").value = "";
+            document.getElementById("endDate").value = "";
+            refreshDashboard();
+        }
+    );
 
-        document.getElementById("refreshButton").addEventListener("click", function () {
+    document.getElementById("refreshButton").addEventListener(
+        "click",
+        refreshDashboard
+    );
 
-    loadAnalytics();
-    loadTransactions();
-    loadCharts();
-
-});
-
-
-loadAnalytics();
-loadTransactions();
-loadCharts();
-
-    </script>
+    refreshDashboard();
+</script>
 
 </body>
-
 </html>

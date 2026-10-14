@@ -892,53 +892,101 @@ def get_transactions():
 
 @app.route("/api/analytics", methods=["GET"])
 @login_required("admin")
+
 def get_analytics():
+    start_date = request.args.get("start_date", "").strip()
+    end_date = request.args.get("end_date", "").strip()
+
+    try:
+        for date_value in (start_date, end_date):
+            if date_value:
+                datetime.strptime(date_value, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({
+            "error": "Dates must use YYYY-MM-DD format"
+        }), 400
+
+    if start_date and end_date and start_date > end_date:
+        return jsonify({
+            "error": "Start date cannot be after end date"
+        }), 400
+
+    conditions = []
+    parameters = []
+
+    if start_date:
+        conditions.append("completed_at >= ?")
+        parameters.append(start_date)
+
+    if end_date:
+        conditions.append("completed_at < date(?, '+1 day')")
+        parameters.append(end_date)
+
+    where_clause = (
+        "WHERE " + " AND ".join(conditions)
+        if conditions else ""
+    )
+
     connection = get_connection()
 
-    total_transactions = connection.execute("""
-        SELECT COUNT(*) AS total
-        FROM transactions
-    """).fetchone()["total"]
+    try:
+        total_transactions = connection.execute(
+            f"SELECT COUNT(*) AS total FROM transactions {where_clause}",
+            parameters
+        ).fetchone()["total"]
 
-    total_revenue = connection.execute("""
-        SELECT COALESCE(SUM(amount), 0) AS total
-        FROM transactions
-    """).fetchone()["total"]
+        total_revenue = connection.execute(
+            f"SELECT COALESCE(SUM(amount), 0) AS total FROM transactions {where_clause}",
+            parameters
+        ).fetchone()["total"]
 
-    petrol_sales = connection.execute("""
-        SELECT COALESCE(SUM(amount), 0) AS total
-        FROM transactions
-        WHERE fuel_type = 'PETROL'
-    """).fetchone()["total"]
+        petrol_sales = connection.execute(
+            f"""
+            SELECT COALESCE(SUM(amount), 0) AS total
+            FROM transactions
+            {where_clause}
+            {"AND" if where_clause else "WHERE"} fuel_type = 'PETROL'
+            """,
+            parameters
+        ).fetchone()["total"]
 
-    diesel_sales = connection.execute("""
-        SELECT COALESCE(SUM(amount), 0) AS total
-        FROM transactions
-        WHERE fuel_type = 'DIESEL'
-    """).fetchone()["total"]
+        diesel_sales = connection.execute(
+            f"""
+            SELECT COALESCE(SUM(amount), 0) AS total
+            FROM transactions
+            {where_clause}
+            {"AND" if where_clause else "WHERE"} fuel_type = 'DIESEL'
+            """,
+            parameters
+        ).fetchone()["total"]
 
-    pump_usage = connection.execute("""
-        SELECT
-            pump_number,
-            COUNT(*) AS transactions,
-            COALESCE(SUM(amount), 0) AS revenue
-        FROM transactions
-        GROUP BY pump_number
-        ORDER BY pump_number
-    """).fetchall()
+        pump_usage = connection.execute(
+            f"""
+            SELECT
+                pump_number,
+                COUNT(*) AS transactions,
+                COALESCE(SUM(amount), 0) AS revenue
+            FROM transactions
+            {where_clause}
+            GROUP BY pump_number
+            ORDER BY pump_number
+            """,
+            parameters
+        ).fetchall()
 
-    connection.close()
+        return jsonify({
+            "total_transactions": total_transactions,
+            "total_revenue": total_revenue,
+            "petrol_sales": petrol_sales,
+            "diesel_sales": diesel_sales,
+            "pump_usage": [dict(pump) for pump in pump_usage],
+            "start_date": start_date or None,
+            "end_date": end_date or None
+        }), 200
 
-    return jsonify({
-        "total_transactions": total_transactions,
-        "total_revenue": total_revenue,
-        "petrol_sales": petrol_sales,
-        "diesel_sales": diesel_sales,
-        "pump_usage": [
-            dict(pump)
-            for pump in pump_usage
-        ]
-    }), 200
+    finally:
+        connection.close()
+
 
 
 if __name__ == "__main__":
