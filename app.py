@@ -5,13 +5,16 @@ from flask import (
     render_template,
     session,
     redirect,
-    url_for
+    url_for,
+    Response
 )
 from database.database import initialize_database, get_connection
 from datetime import datetime
 from functools import wraps
 from werkzeug.security import check_password_hash, generate_password_hash
 import secrets
+import io
+import csv
 
 
 app = Flask(__name__)
@@ -888,6 +891,126 @@ def get_transactions():
         dict(transaction)
         for transaction in transactions
     ]), 200
+
+
+
+@app.route("/api/transactions/export", methods=["GET"])
+@login_required("admin")
+def export_transactions_csv():
+    """Download transaction records as a date-filtered CSV report."""
+    start_date = request.args.get("start_date", "").strip()
+    end_date = request.args.get("end_date", "").strip()
+
+    try:
+        for date_value in (start_date, end_date):
+            if date_value:
+                datetime.strptime(date_value, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({
+            "error": "Dates must use YYYY-MM-DD format"
+        }), 400
+
+    if start_date and end_date and start_date > end_date:
+        return jsonify({
+            "error": "Start date cannot be after end date"
+        }), 400
+
+    conditions = []
+    parameters = []
+
+    if start_date:
+        conditions.append("completed_at >= ?")
+        parameters.append(start_date)
+
+    if end_date:
+        conditions.append("completed_at < date(?, '+1 day')")
+        parameters.append(end_date)
+
+    where_clause = (
+        "WHERE " + " AND ".join(conditions)
+        if conditions else ""
+    )
+
+    connection = get_connection()
+
+    try:
+        transactions = connection.execute(
+            f"""
+                SELECT
+                    id,
+                    token_code,
+                    vehicle_number,
+                    fuel_type,
+                    amount,
+                    pump_number,
+                    started_at,
+                    completed_at
+                FROM transactions
+                {where_clause}
+                ORDER BY id DESC
+            """,
+            parameters
+        ).fetchall()
+    finally:
+        connection.close()
+
+    output = io.StringIO(newline="")
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "Transaction ID",
+        "Token Code",
+        "Vehicle Number",
+        "Fuel Type",
+        "Amount (INR)",
+        "Pump Number",
+        "Started At",
+        "Completed At"
+    ])
+
+    def safe_csv_text(value):
+        if value is None:
+            return ""
+
+        text_value = str(value)
+
+        # Protect spreadsheet users from formula injection.
+        if text_value.startswith(("=", "+", "-", "@", "\t", "\r")):
+            return "'" + text_value
+
+        return text_value
+
+    for transaction in transactions:
+        writer.writerow([
+            transaction["id"],
+            safe_csv_text(transaction["token_code"]),
+            safe_csv_text(transaction["vehicle_number"]),
+            safe_csv_text(transaction["fuel_type"]),
+            transaction["amount"],
+            transaction["pump_number"],
+            safe_csv_text(transaction["started_at"]),
+            safe_csv_text(transaction["completed_at"])
+        ])
+
+    date_suffix = ""
+
+    if start_date or end_date:
+        date_suffix = (
+            "_" + (start_date or "start")
+            + "_to_" + (end_date or "today")
+        )
+
+    filename = "fuelflow_transactions" + date_suffix + ".csv"
+    csv_content = "\ufeff" + output.getvalue()
+    output.close()
+
+    return Response(
+        csv_content,
+        mimetype="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
 
 
 @app.route("/api/analytics", methods=["GET"])

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,6 +98,14 @@
 
         .clear-button:hover {
             background: #475569;
+        }
+
+        .export-button {
+            background: #2563eb;
+        }
+
+        .export-button:hover {
+            background: #1d4ed8;
         }
 
         .date-filters {
@@ -204,7 +211,8 @@
             margin-top: 15px;
         }
 
-        th, td {
+        th,
+        td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #e5e7eb;
@@ -307,6 +315,11 @@
         <button type="button" id="clearDateFilter"
                 class="filter-button clear-button">
             Clear Filter
+        </button>
+
+        <button type="button" id="exportCsvButton"
+                class="filter-button export-button">
+            Export CSV
         </button>
     </div>
 
@@ -447,7 +460,6 @@
     }
 
     function getTransactionDate(transaction) {
-        // Match analytics filtering, which uses completed_at.
         const value = transaction.completed_at;
 
         if (!value) return null;
@@ -463,8 +475,6 @@
         return transactions.filter(transaction => {
             const date = getTransactionDate(transaction);
 
-            // Exclude records without a completion date when a date
-            // filter is active, matching the analytics API.
             if (!date) {
                 return !startDate && !endDate;
             }
@@ -511,7 +521,9 @@
             try {
                 const errorData = await response.json();
                 message = errorData.error || message;
-            } catch (_) {}
+            } catch (error) {
+                // Ignore JSON parsing errors.
+            }
 
             throw new Error(message);
         }
@@ -681,6 +693,7 @@
 
             values.forEach(value => {
                 const cell = document.createElement("td");
+
                 cell.textContent =
                     value === null || value === undefined || value === ""
                         ? "—"
@@ -697,8 +710,7 @@
         clearError();
         updateFilterSummary();
 
-        const startDate = document.getElementById("startDate").value;
-        const endDate = document.getElementById("endDate").value;
+        const { startDate, endDate } = getSelectedDates();
 
         if (startDate && endDate && startDate > endDate) {
             showError("Start date cannot be after end date.");
@@ -733,6 +745,37 @@
     document.getElementById("refreshButton").addEventListener(
         "click",
         refreshDashboard
+    );
+
+    // Export transactions as a CSV using the selected date filters.
+    document.getElementById("exportCsvButton").addEventListener(
+        "click",
+        function () {
+            const { startDate, endDate } = getSelectedDates();
+
+            if (startDate && endDate && startDate > endDate) {
+                showError("Start date cannot be after end date.");
+                return;
+            }
+
+            clearError();
+
+            const params = new URLSearchParams();
+
+            if (startDate) {
+                params.set("start_date", startDate);
+            }
+
+            if (endDate) {
+                params.set("end_date", endDate);
+            }
+
+            const query = params.toString();
+
+            window.location.href =
+                "/api/transactions/export" +
+                (query ? "?" + query : "");
+        }
     );
 
     refreshDashboard();
