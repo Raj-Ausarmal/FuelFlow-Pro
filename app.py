@@ -518,6 +518,73 @@ def get_pumps():
     ])
 
 
+@app.route("/api/admin/pumps", methods=["GET"])
+@login_required("admin")
+def get_admin_pumps():
+    connection = get_connection()
+
+    try:
+        pumps = connection.execute("""
+            SELECT pump_number, status, current_token
+            FROM pumps
+            ORDER BY pump_number
+        """).fetchall()
+
+        return jsonify([
+            dict(pump) for pump in pumps
+        ]), 200
+
+    finally:
+        connection.close()
+
+@app.route("/api/admin/pumps/<int:pump_number>/status", methods=["PUT"])
+@login_required("admin")
+def update_pump_status(pump_number):
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Valid JSON data is required"}), 400
+
+    new_status = data.get("status")
+
+    if new_status not in ("AVAILABLE", "OUT_OF_SERVICE"):
+        return jsonify({
+            "error": "Status must be AVAILABLE or OUT_OF_SERVICE"
+        }), 400
+
+    connection = get_connection()
+
+    try:
+        pump = connection.execute(
+            "SELECT pump_number, status, current_token FROM pumps WHERE pump_number = ?",
+            (pump_number,)
+        ).fetchone()
+
+        if pump is None:
+            return jsonify({"error": "Pump not found"}), 404
+
+        if pump["status"] == "BUSY":
+            return jsonify({
+                "error": "Cannot change a busy pump. Complete its refueling operation first."
+            }), 409
+
+        connection.execute(
+            "UPDATE pumps SET status = ? WHERE pump_number = ?",
+            (new_status, pump_number)
+        )
+        connection.commit()
+
+        return jsonify({
+            "message": f"Pump {pump_number} status updated successfully",
+            "pump_number": pump_number,
+            "status": new_status
+        }), 200
+
+    finally:
+        connection.close()
+
+
+
 @app.route("/api/tokens", methods=["POST"])
 @customer_required
 def create_token():

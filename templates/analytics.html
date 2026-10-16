@@ -367,11 +367,17 @@
         </div>
     </div>
 
-    <h2 class="section-title">Pump Usage</h2>
+    <h2 class="section-title">Pump Status Management</h2>
 
-    <div class="pump-grid" id="pumpUsage">
-        <div class="loading">Loading pump data...</div>
-    </div>
+<div class="pump-grid" id="adminPumpStatus">
+    <div class="loading">Loading pump statuses...</div>
+</div>
+
+<h2 class="section-title">Pump Usage</h2>
+
+<div class="pump-grid" id="pumpUsage">
+    <div class="loading">Loading pump data...</div>
+</div>
 
     <h2 class="section-title">Transaction History</h2>
 
@@ -706,6 +712,83 @@
         });
     }
 
+async function loadAdminPumpStatus() {
+    const response = await fetch("/api/admin/pumps");
+
+    if (!response.ok) {
+        throw new Error("Failed to load admin pump statuses.");
+    }
+
+    const pumps = await response.json();
+    const container = document.getElementById("adminPumpStatus");
+
+    container.replaceChildren();
+
+    pumps.forEach(pump => {
+        const card = document.createElement("div");
+        card.className = "pump-card";
+
+        const heading = document.createElement("h3");
+        heading.textContent = "Pump " + pump.pump_number;
+
+        const status = document.createElement("p");
+        status.textContent = "Status: " + pump.status;
+
+        const button = document.createElement("button");
+        button.className = "filter-button";
+
+        const isOutOfService = pump.status === "OUT_OF_SERVICE";
+
+        button.textContent = isOutOfService
+            ? "Restore Pump"
+            : "Take Out of Service";
+
+        button.disabled = pump.status === "BUSY";
+
+        button.addEventListener("click", async () => {
+            const newStatus = isOutOfService
+                ? "AVAILABLE"
+                : "OUT_OF_SERVICE";
+
+            if (!confirm(
+                "Change Pump " + pump.pump_number +
+                " status to " + newStatus + "?"
+            )) {
+                return;
+            }
+
+            try {
+                const updateResponse = await fetch(
+                    "/api/admin/pumps/" + pump.pump_number + "/status",
+                    {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ status: newStatus })
+                    }
+                );
+
+                const result = await updateResponse.json();
+
+                if (!updateResponse.ok) {
+                    throw new Error(
+                        result.error || "Status update failed."
+                    );
+                }
+
+                await loadAdminPumpStatus();
+                await loadAnalytics();
+
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        card.append(heading, status, button);
+        container.appendChild(card);
+    });
+}
     async function refreshDashboard() {
         clearError();
         updateFilterSummary();
@@ -720,7 +803,8 @@
         try {
             await Promise.all([
                 loadAnalytics(),
-                loadTransactions()
+                loadTransactions(),
+                loadAdminPumpStatus()
             ]);
         } catch (error) {
             console.error(error);
