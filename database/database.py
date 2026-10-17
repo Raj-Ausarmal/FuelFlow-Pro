@@ -65,6 +65,23 @@ def initialize_database():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS maintenance_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pump_number INTEGER NOT NULL,
+            issue_reason TEXT NOT NULL,
+            maintenance_date TEXT NOT NULL,
+            service_notes TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (pump_number) REFERENCES pumps (pump_number)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_maintenance_history_pump_date
+        ON maintenance_history (pump_number, maintenance_date DESC)
+    """)
+
     # Safely migrate existing databases.
     customer_columns = {
         row["name"]

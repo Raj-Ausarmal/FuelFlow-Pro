@@ -245,6 +245,43 @@
             margin: 0 0 18px;
         }
 
+        .maintenance-form {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+            align-items: end;
+        }
+
+        .maintenance-form .date-field textarea {
+            min-height: 84px;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font: inherit;
+            resize: vertical;
+        }
+
+        .maintenance-form .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .maintenance-message {
+            display: none;
+            padding: 12px;
+            border-radius: 7px;
+            margin-bottom: 14px;
+        }
+
+        .maintenance-message.error-message {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .maintenance-message.success-message {
+            background: #dcfce7;
+            color: #166534;
+        }
+
         @media (max-width: 900px) {
             .cards {
                 grid-template-columns: repeat(2, 1fr);
@@ -268,6 +305,14 @@
             .date-filters {
                 align-items: stretch;
                 flex-direction: column;
+            }
+
+            .maintenance-form {
+                grid-template-columns: 1fr;
+            }
+
+            .maintenance-form .full-width {
+                grid-column: auto;
             }
 
             .date-field input {
@@ -373,6 +418,60 @@
     <div class="loading">Loading pump statuses...</div>
 </div>
 
+    <h2 class="section-title">Pump Maintenance History</h2>
+
+    <div class="table-card">
+        <div id="maintenanceMessage" class="maintenance-message" role="status"></div>
+
+        <form id="maintenanceForm" class="maintenance-form">
+            <div class="date-field">
+                <label for="maintenancePumpNumber">Pump Number</label>
+                <select id="maintenancePumpNumber" required>
+                    <option value="">Select a pump</option>
+                    <option value="1">Pump 1</option>
+                    <option value="2">Pump 2</option>
+                    <option value="3">Pump 3</option>
+                </select>
+            </div>
+
+            <div class="date-field">
+                <label for="maintenanceDate">Maintenance Date</label>
+                <input type="date" id="maintenanceDate" required>
+            </div>
+
+            <div class="date-field full-width">
+                <label for="maintenanceIssue">Issue / Reason</label>
+                <input type="text" id="maintenanceIssue" maxlength="200" required>
+            </div>
+
+            <div class="date-field full-width">
+                <label for="maintenanceNotes">Service Notes (optional)</label>
+                <textarea id="maintenanceNotes" maxlength="2000"></textarea>
+            </div>
+
+            <button type="submit" class="filter-button">Add Maintenance Record</button>
+        </form>
+    </div>
+
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Pump</th>
+                    <th>Maintenance Date</th>
+                    <th>Issue / Reason</th>
+                    <th>Service Notes</th>
+                    <th>Recorded</th>
+                </tr>
+            </thead>
+            <tbody id="maintenanceTable">
+                <tr>
+                    <td colspan="5" class="loading">Loading maintenance history...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
 <h2 class="section-title">Pump Usage</h2>
 
 <div class="pump-grid" id="pumpUsage">
@@ -412,6 +511,7 @@
     let fuelChartInstance = null;
     let pumpChartInstance = null;
     let allTransactions = [];
+    let maintenanceSubmitInProgress = false;
 
     function getSelectedDates() {
         return {
@@ -662,6 +762,73 @@
         renderTransactions();
     }
 
+    async function loadMaintenanceHistory() {
+        const response = await fetch("/api/admin/maintenance");
+
+        if (!response.ok) {
+            let message = "Failed to load maintenance history.";
+
+            try {
+                const errorData = await response.json();
+                message = errorData.error || message;
+            } catch (error) {
+                // Ignore JSON parsing errors.
+            }
+
+            throw new Error(message);
+        }
+
+        const records = await response.json();
+        const table = document.getElementById("maintenanceTable");
+        table.replaceChildren();
+
+        if (!records.length) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = 5;
+            cell.className = "loading";
+            cell.textContent = "No maintenance records found.";
+            row.appendChild(cell);
+            table.appendChild(row);
+            return;
+        }
+
+        records.forEach(record => {
+            const row = document.createElement("tr");
+            const values = [
+                "Pump " + record.pump_number,
+                record.maintenance_date,
+                record.issue_reason,
+                record.service_notes || "—",
+                formatDate(record.created_at)
+            ];
+
+            values.forEach(value => {
+                const cell = document.createElement("td");
+                cell.textContent = String(value);
+                row.appendChild(cell);
+            });
+
+            table.appendChild(row);
+        });
+    }
+
+    function showMaintenanceMessage(message, isError) {
+        const messageBox = document.getElementById("maintenanceMessage");
+        messageBox.textContent = message;
+        messageBox.className = "maintenance-message " + (
+            isError ? "error-message" : "success-message"
+        );
+        messageBox.style.display = "block";
+    }
+
+    function clearMaintenanceMessage() {
+        const messageBox = document.getElementById("maintenanceMessage");
+        messageBox.textContent = "";
+        messageBox.className = "maintenance-message";
+        messageBox.style.display = "none";
+    }
+
     function renderTransactions() {
         const table = document.getElementById("transactionTable");
         const filteredTransactions = filterTransactions(allTransactions);
@@ -804,7 +971,8 @@ async function loadAdminPumpStatus() {
             await Promise.all([
                 loadAnalytics(),
                 loadTransactions(),
-                loadAdminPumpStatus()
+                loadAdminPumpStatus(),
+                loadMaintenanceHistory()
             ]);
         } catch (error) {
             console.error(error);
@@ -829,6 +997,70 @@ async function loadAdminPumpStatus() {
     document.getElementById("refreshButton").addEventListener(
         "click",
         refreshDashboard
+    );
+
+    document.getElementById("maintenanceForm").addEventListener(
+        "submit",
+        async function (event) {
+            event.preventDefault();
+
+            if (maintenanceSubmitInProgress) {
+                return;
+            }
+
+            maintenanceSubmitInProgress = true;
+            const form = event.currentTarget;
+            clearError();
+            clearMaintenanceMessage();
+
+            const submitButton = form.querySelector(
+                "button[type=submit]"
+            );
+            submitButton.disabled = true;
+
+            try {
+                const response = await fetch("/api/admin/maintenance", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        pump_number: document.getElementById(
+                            "maintenancePumpNumber"
+                        ).value,
+                        issue_reason: document.getElementById(
+                            "maintenanceIssue"
+                        ).value,
+                        maintenance_date: document.getElementById(
+                            "maintenanceDate"
+                        ).value,
+                        service_notes: document.getElementById(
+                            "maintenanceNotes"
+                        ).value
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        result.error || "Unable to add maintenance record."
+                    );
+                }
+
+                form.reset();
+                await loadMaintenanceHistory();
+                showMaintenanceMessage(
+                    result.message || "Maintenance record added successfully.",
+                    false
+                );
+            } catch (error) {
+                const message = error.message || "Unable to add maintenance record.";
+                showError(message);
+                showMaintenanceMessage(message, true);
+            } finally {
+                maintenanceSubmitInProgress = false;
+                submitButton.disabled = false;
+            }
+        }
     );
 
     // Export transactions as a CSV using the selected date filters.

@@ -584,6 +584,122 @@ def update_pump_status(pump_number):
         connection.close()
 
 
+@app.route("/api/admin/maintenance", methods=["GET"])
+@login_required("admin")
+def get_maintenance_history():
+    connection = get_connection()
+
+    try:
+        records = connection.execute("""
+            SELECT
+                id,
+                pump_number,
+                issue_reason,
+                maintenance_date,
+                service_notes,
+                created_at
+            FROM maintenance_history
+            ORDER BY created_at DESC, id DESC
+        """).fetchall()
+
+        return jsonify([dict(record) for record in records]), 200
+
+    finally:
+        connection.close()
+
+
+@app.route("/api/admin/maintenance", methods=["POST"])
+@login_required("admin")
+def create_maintenance_record():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Valid JSON data is required"}), 400
+
+    pump_number = data.get("pump_number")
+    issue_reason = data.get("issue_reason")
+    maintenance_date = data.get("maintenance_date")
+    service_notes = data.get("service_notes", "")
+
+    if isinstance(pump_number, bool):
+        return jsonify({"error": "pump_number must be a valid number"}), 400
+
+    try:
+        pump_number = int(pump_number)
+    except (ValueError, TypeError):
+        return jsonify({"error": "pump_number must be a valid number"}), 400
+
+    if not all(isinstance(value, str) for value in [
+        issue_reason, maintenance_date, service_notes
+    ]):
+        return jsonify({"error": "Issue, date, and service notes must be text"}), 400
+
+    issue_reason = issue_reason.strip()
+    maintenance_date = maintenance_date.strip()
+    service_notes = service_notes.strip()
+
+    if not issue_reason or not maintenance_date:
+        return jsonify({
+            "error": "pump_number, issue_reason, and maintenance_date are required"
+        }), 400
+
+    if len(issue_reason) > 200:
+        return jsonify({"error": "Issue or reason must be 200 characters or fewer"}), 400
+
+    if len(service_notes) > 2000:
+        return jsonify({"error": "Service notes must be 2000 characters or fewer"}), 400
+
+    try:
+        datetime.strptime(maintenance_date, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"error": "maintenance_date must use YYYY-MM-DD format"}), 400
+
+    connection = get_connection()
+
+    try:
+        pump = connection.execute(
+            "SELECT pump_number FROM pumps WHERE pump_number = ?",
+            (pump_number,)
+        ).fetchone()
+
+        if pump is None:
+            return jsonify({"error": "Pump not found"}), 404
+
+        created_at = datetime.now().isoformat(timespec="seconds")
+        cursor = connection.execute("""
+            INSERT INTO maintenance_history (
+                pump_number,
+                issue_reason,
+                maintenance_date,
+                service_notes,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            pump_number,
+            issue_reason,
+            maintenance_date,
+            service_notes or None,
+            created_at
+        ))
+        connection.commit()
+
+        return jsonify({
+            "message": "Maintenance record created successfully",
+            "maintenance": {
+                "id": cursor.lastrowid,
+                "pump_number": pump_number,
+                "issue_reason": issue_reason,
+                "maintenance_date": maintenance_date,
+                "service_notes": service_notes or None,
+                "created_at": created_at
+            }
+        }), 201
+
+    finally:
+        connection.close()
+
+
 
 @app.route("/api/tokens", methods=["POST"])
 @customer_required
