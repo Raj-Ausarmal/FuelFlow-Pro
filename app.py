@@ -15,6 +15,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import secrets
 import io
 import csv
+import sqlite3
 
 
 app = Flask(__name__)
@@ -34,6 +35,56 @@ USERS = {
 
 
 initialize_database()
+
+
+def validate_customer_username(value):
+    """Return a normalized username and a validation error, when applicable."""
+    if not isinstance(value, str):
+        return None, "Username must be text"
+
+    username = value.strip().lower()
+
+    if not username:
+        return None, "Username is required"
+
+    if len(username) < 3:
+        return None, "Username must contain at least 3 characters"
+
+    if len(username) > 50:
+        return None, "Username must be 50 characters or fewer"
+
+    return username, None
+
+
+def get_password_requirement_errors(password):
+    """Return every password-strength requirement that has not been met."""
+    errors = []
+
+    if len(password) < 8:
+        errors.append("at least 8 characters")
+
+    if not any("A" <= character <= "Z" for character in password):
+        errors.append("at least one uppercase letter")
+
+    if not any("0" <= character <= "9" for character in password):
+        errors.append("at least one number")
+
+    if not any(
+        not character.isalnum() and not character.isspace()
+        for character in password
+    ):
+        errors.append("at least one special symbol")
+
+    return errors
+
+
+def password_requirement_message(password):
+    errors = get_password_requirement_errors(password)
+
+    if errors:
+        return "Password must include " + "; ".join(errors) + "."
+
+    return None
 
 
 def login_required(role=None):
@@ -109,11 +160,11 @@ def customer_dashboard():
 
 @app.route("/api/customer/register", methods=["POST"])
 def customer_register_api():
-    data = request.get_json()
+    data = request.get_json(silent=True)
 
-    if not data:
+    if not isinstance(data, dict):
         return jsonify({
-            "error": "Request body is required"
+            "error": "Valid JSON data is required"
         }), 400
 
     username = data.get("username")
@@ -124,17 +175,21 @@ def customer_register_api():
             "error": "Username and password are required"
         }), 400
 
-    username = username.strip().lower()
+    username, username_error = validate_customer_username(username)
 
-    if len(username) < 3:
-        return jsonify({
-            "error": "Username must contain at least 3 characters"
-        }), 400
+    if username_error:
+        return jsonify({"error": username_error}), 400
 
-    if len(password) < 6:
-        return jsonify({
-            "error": "Password must contain at least 6 characters"
-        }), 400
+    if not isinstance(password, str):
+        return jsonify({"error": "Password must be text"}), 400
+
+    password_error = password_requirement_message(password)
+
+    if password_error:
+        return jsonify({"error": password_error}), 400
+
+    if len(password) > 256:
+        return jsonify({"error": "Password is too long"}), 400
 
     connection = get_connection()
 
@@ -154,24 +209,26 @@ def customer_register_api():
     password_hash = generate_password_hash(password)
     created_at = datetime.now().isoformat(timespec="seconds")
 
-    cursor = connection.execute("""
-        INSERT INTO customers (
+    try:
+        cursor = connection.execute("""
+            INSERT INTO customers (
+                username,
+                password_hash,
+                created_at
+            )
+            VALUES (?, ?, ?)
+        """, (
             username,
             password_hash,
             created_at
-        )
-        VALUES (?, ?, ?)
-    """, (
-        username,
-        password_hash,
-        created_at
-    ))
-
-    connection.commit()
-
-    customer_id = cursor.lastrowid
-
-    connection.close()
+        ))
+        connection.commit()
+        customer_id = cursor.lastrowid
+    except sqlite3.IntegrityError:
+        connection.rollback()
+        return jsonify({"error": "Username already exists"}), 409
+    finally:
+        connection.close()
 
     session.clear()
     session["customer_id"] = customer_id
@@ -324,6 +381,54 @@ def update_customer_profile():
     return jsonify({"message": "Profile updated successfully"}), 200
 
 
+@app.route("/api/customer/change-username", methods=["POST"])
+@customer_required
+def change_customer_username():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Valid JSON data is required"}), 400
+
+    username, username_error = validate_customer_username(data.get("username"))
+
+    if username_error:
+        return jsonify({"error": username_error}), 400
+
+    connection = get_connection()
+
+    try:
+        existing_customer = connection.execute("""
+            SELECT id
+            FROM customers
+            WHERE username = ? AND id != ?
+        """, (username, session["customer_id"])).fetchone()
+
+        if existing_customer is not None:
+            return jsonify({"error": "Username already exists"}), 409
+
+        connection.execute("""
+            UPDATE customers
+            SET username = ?
+            WHERE id = ?
+        """, (username, session["customer_id"]))
+        connection.commit()
+    except sqlite3.IntegrityError:
+        connection.rollback()
+        return jsonify({"error": "Username already exists"}), 409
+    except sqlite3.Error:
+        connection.rollback()
+        return jsonify({"error": "Unable to update username. Please try again."}), 500
+    finally:
+        connection.close()
+
+    session["customer_username"] = username
+
+    return jsonify({
+        "message": "Username updated successfully",
+        "username": username
+    }), 200
+
+
 @app.route("/api/customer/change-password", methods=["POST"])
 @customer_required
 def change_customer_password():
@@ -341,13 +446,13 @@ def change_customer_password():
     ]):
         return jsonify({"error": "All password fields are required"}), 400
 
-    if len(new_password) < 8:
-        return jsonify({
-            "error": "New password must contain at least 8 characters"
-        }), 400
-
     if len(new_password) > 256:
         return jsonify({"error": "New password is too long"}), 400
+
+    password_error = password_requirement_message(new_password)
+
+    if password_error:
+        return jsonify({"error": password_error}), 400
 
     if new_password != confirm_password:
         return jsonify({"error": "New passwords do not match"}), 400

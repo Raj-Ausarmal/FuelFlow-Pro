@@ -182,6 +182,7 @@
                         placeholder="Create password"
                         required
                     >
+                    <small>Password must have at least 8 characters, one uppercase letter, one number, and one special symbol.</small>
                 </div>
 
                 <div class="form-group">
@@ -206,6 +207,28 @@
     </div>
 
     <script>
+        function getPasswordRequirementErrors(password) {
+            const errors = [];
+
+            if (password.length < 8) {
+                errors.push("at least 8 characters");
+            }
+
+            if (!/[A-Z]/.test(password)) {
+                errors.push("at least one uppercase letter");
+            }
+
+            if (!/[0-9]/.test(password)) {
+                errors.push("at least one number");
+            }
+
+            if (!/[^A-Za-z0-9\s]/.test(password)) {
+                errors.push("at least one special symbol");
+            }
+
+            return errors;
+        }
+
         document.getElementById("registerForm").addEventListener("submit", async function(event) {
             event.preventDefault();
 
@@ -218,6 +241,15 @@
 
             if (password !== confirmPassword) {
                 errorMessage.textContent = "Passwords do not match";
+                errorMessage.style.display = "block";
+                return;
+            }
+
+            const passwordErrors = getPasswordRequirementErrors(password);
+
+            if (passwordErrors.length) {
+                errorMessage.textContent =
+                    "Password must include " + passwordErrors.join("; ") + ".";
                 errorMessage.style.display = "block";
                 return;
             }

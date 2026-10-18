@@ -142,8 +142,6 @@
             <h3>Personal Information</h3>
             <div class="username-note">
                 Username: <strong id="username">Loading...</strong>
-                <br><br>
-                Your username cannot be changed here.
             </div>
 
             <form id="profileForm">
@@ -162,8 +160,21 @@
         </section>
 
         <section class="card">
+            <h3>Change Username</h3>
+            <p>Choose a unique username with at least 3 characters.</p>
+
+            <form id="usernameForm">
+                <label for="newUsername">New Username</label>
+                <input id="newUsername" type="text" minlength="3" maxlength="50" autocomplete="username" required>
+
+                <button type="submit">Change Username</button>
+            </form>
+            <div id="usernameMessage" class="message" role="status"></div>
+        </section>
+
+        <section class="card">
             <h3>Change Password</h3>
-            <p>Enter your current password before choosing a new one.</p>
+            <p>Enter your current password before choosing a new one. Your new password must have at least 8 characters, one uppercase letter, one number, and one special symbol.</p>
 
             <form id="passwordForm">
                 <label for="currentPassword">Current Password</label>
@@ -236,6 +247,55 @@
             }
         });
 
+        function getPasswordRequirementErrors(password) {
+            const errors = [];
+
+            if (password.length < 8) {
+                errors.push("at least 8 characters");
+            }
+
+            if (!/[A-Z]/.test(password)) {
+                errors.push("at least one uppercase letter");
+            }
+
+            if (!/[0-9]/.test(password)) {
+                errors.push("at least one number");
+            }
+
+            if (!/[^A-Za-z0-9\s]/.test(password)) {
+                errors.push("at least one special symbol");
+            }
+
+            return errors;
+        }
+
+        document.getElementById("usernameForm").addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            try {
+                const response = await fetch("/api/customer/change-username", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        username: document.getElementById("newUsername").value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showMessage("usernameMessage", data.error || "Could not change username.", "error");
+                    return;
+                }
+
+                document.getElementById("username").textContent = data.username;
+                document.getElementById("usernameForm").reset();
+                showMessage("usernameMessage", data.message, "success");
+            } catch (error) {
+                showMessage("usernameMessage", "Could not connect to the server.", "error");
+            }
+        });
+
         document.getElementById("passwordForm").addEventListener("submit", async function (event) {
             event.preventDefault();
 
@@ -245,6 +305,17 @@
 
             if (newPassword !== confirmPassword) {
                 showMessage("passwordMessage", "New passwords do not match.", "error");
+                return;
+            }
+
+            const passwordErrors = getPasswordRequirementErrors(newPassword);
+
+            if (passwordErrors.length) {
+                showMessage(
+                    "passwordMessage",
+                    "Password must include " + passwordErrors.join("; ") + ".",
+                    "error"
+                );
                 return;
             }
 
