@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Help & Support | FuelFlow Pro</title><link rel="stylesheet" href="{{ url_for('static', filename='customer.css') }}"></head>
+<body><div class="app-shell"><header class="topbar"><a class="brand" href="/customer-dashboard"><span class="brand-mark">⛽</span>FuelFlow Pro</a><div class="topbar-actions"><a class="icon-button" href="/customer-logout" aria-label="Logout">↪</a></div></header>
+<main class="page"><p class="eyebrow">We are here to help</p><h1>Help & Support</h1><p class="muted">Helpful answers for managing your fuel tokens and account.</p>
+<section class="section"><div class="notice">For your security, never share your password. A fuel token QR code should only be shown when you are ready for the operator to scan it.</div></section>
+<section class="section"><div class="section-heading"><h2>Frequently asked questions</h2></div><div class="faq-list">
+<details class="card faq"><summary>How do I create a fuel token?</summary><p>Open My Tokens, enter your vehicle number, fuel type, and amount, then generate a token. Its QR code will be available there.</p></details>
+<details class="card faq"><summary>What do the token statuses mean?</summary><p>WAITING means your token is ready to be scanned. AUTHORIZED means it has been assigned by an operator. EXPIRED indicates the refueling process has completed.</p></details>
+<details class="card faq"><summary>Why is my pump number not shown yet?</summary><p>A pump is assigned by the operator when the QR code is scanned. Before then, your token may show Pump pending.</p></details>
+<details class="card faq"><summary>I cannot log in or change my password.</summary><p>Check that you are using your current username. New passwords must include at least 8 characters, one uppercase letter, one number, and one special symbol.</p></details>
+<details class="card faq"><summary>Where can I see older activity?</summary><p>Open the History tab to search your customer tokens and refueling records.</p></details>
+</div></section></main>
+<nav class="bottom-nav" aria-label="Customer navigation"><a href="/customer-dashboard"><span class="nav-icon">⌂</span>Home</a><a href="/customer-tokens"><span class="nav-icon">▦</span>Tokens</a><a href="/customer-history"><span class="nav-icon">◷</span>History</a><a href="/customer-profile"><span class="nav-icon">◉</span>Profile</a></nav></div></body></html>

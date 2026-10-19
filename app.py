@@ -158,6 +158,12 @@ def customer_dashboard():
     return render_template("customer.html")
 
 
+@app.route("/customer-tokens")
+@customer_required
+def customer_tokens_page():
+    return render_template("customer_tokens.html")
+
+
 @app.route("/api/customer/register", methods=["POST"])
 def customer_register_api():
     data = request.get_json(silent=True)
@@ -308,6 +314,12 @@ def customer_profile_page():
 @customer_required
 def customer_history_page():
     return render_template("customer_history.html")
+
+
+@app.route("/customer-support")
+@customer_required
+def customer_support_page():
+    return render_template("customer_support.html")
 
 
 

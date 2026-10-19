@@ -3,444 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Dashboard | FuelFlow Pro</title>
-
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            background: #f4f7f5;
-            min-height: 100vh;
-        }
-
-        header {
-            background: #0f5132;
-            color: white;
-            padding: 18px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-        }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .username {
-            font-size: 14px;
-        }
-
-        .logout {
-            color: white;
-            text-decoration: none;
-            border: 1px solid rgba(255, 255, 255, 0.7);
-            padding: 8px 14px;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .logout:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
-
-        .welcome {
-            margin-bottom: 25px;
-        }
-
-        .welcome h1 {
-            color: #0f5132;
-            margin-bottom: 6px;
-        }
-
-        .welcome p {
-            color: #666;
-        }
-
-        .card {
-            background: white;
-            padding: 35px;
-            border-radius: 14px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-        }
-
-        .card h2 {
-            color: #0f5132;
-            margin-bottom: 25px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #333;
-        }
-
-        input,
-        select {
-            width: 100%;
-            padding: 13px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 15px;
-            outline: none;
-        }
-
-        input:focus,
-        select:focus {
-            border-color: #0f5132;
-        }
-
-        button {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 8px;
-            background: #0f5132;
-            color: white;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #0b3d26;
-        }
-
-        button:disabled {
-            background: #999;
-            cursor: not-allowed;
-        }
-
-        .error {
-            display: none;
-            background: #f8d7da;
-            color: #842029;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .token-result {
-            display: none;
-            margin-top: 30px;
-            padding: 25px;
-            border: 2px solid #0f5132;
-            border-radius: 12px;
-            text-align: center;
-        }
-
-        .token-result h2 {
-            margin-bottom: 20px;
-            color: #0f5132;
-        }
-
-        .token-code {
-            font-size: 25px;
-            font-weight: bold;
-            letter-spacing: 2px;
-            margin-bottom: 20px;
-        }
-
-        #qrcode {
-            display: flex;
-            justify-content: center;
-            margin: 20px 0;
-        }
-
-        .token-info {
-            text-align: left;
-            background: #f4f7f5;
-            padding: 15px;
-            border-radius: 8px;
-            line-height: 1.8;
-        }
-
-        .status {
-            display: inline-block;
-            background: #fff3cd;
-            color: #664d03;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-weight: bold;
-            margin-top: 15px;
-        }
-
-        .note {
-            margin-top: 20px;
-            color: #666;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        @media (max-width: 600px) {
-            header {
-                padding: 16px 20px;
-            }
-
-            .header-right {
-                gap: 10px;
-            }
-
-            .username {
-                display: none;
-            }
-
-            .container {
-                margin: 25px auto;
-            }
-
-            .card {
-                padding: 25px 20px;
-            }
-        }
-    </style>
+    <title>Home | FuelFlow Pro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='customer.css') }}">
 </head>
-
 <body>
-
-    
-<header>
-    <div class="logo">FuelFlow Pro</div>
-
-    <div class="header-right">
-        <span class="username" id="usernameDisplay"></span>
-        <a href="/customer-profile" class="logout">Profile Settings</a>
-        <a href="/customer-history" class="logout">Transaction History</a>
-        <a href="/customer-logout" class="logout">Logout</a>
-    </div>
-</header>
-
-
-    <main class="container">
-
-        <div class="welcome">
-            <h1>Customer Dashboard</h1>
-            <p>Generate your fuel token before visiting the petrol pump.</p>
-        </div>
-
-        <div class="card">
-
-            <h2>Generate Fuel Token</h2>
-
-            <div id="errorMessage" class="error"></div>
-
-            <form id="tokenForm">
-
-                <div class="form-group">
-                    <label for="vehicleNumber">Vehicle Number</label>
-                    <input
-                        type="text"
-                        id="vehicleNumber"
-                        placeholder="Example: MH20AB1234"
-                        required
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label for="fuelType">Fuel Type</label>
-                    <select id="fuelType" required>
-                        <option value="">Select fuel type</option>
-                        <option value="PETROL">PETROL</option>
-                        <option value="DIESEL">DIESEL</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="amount">Amount (₹)</label>
-                    <input
-                        type="number"
-                        id="amount"
-                        min="1"
-                        step="0.01"
-                        placeholder="Enter amount"
-                        required
-                    >
-                </div>
-
-                <button type="submit" id="generateButton">
-                    Generate Fuel Token
-                </button>
-
-            </form>
-
-            <div id="tokenResult" class="token-result">
-
-                <h2>Your Fuel Token</h2>
-
-                <div class="token-code" id="tokenCode"></div>
-
-                <div id="qrcode"></div>
-
-                <div class="token-info">
-                    <div>
-                        <strong>Vehicle:</strong>
-                        <span id="resultVehicle"></span>
-                    </div>
-
-                    <div>
-                        <strong>Fuel:</strong>
-                        <span id="resultFuel"></span>
-                    </div>
-
-                    <div>
-                        <strong>Amount:</strong>
-                        ₹<span id="resultAmount"></span>
-                    </div>
-                </div>
-
-                <div class="status">
-                    WAITING
-                </div>
-
-                <p class="note">
-                    Show this QR code to the operator at the petrol pump.
-                    You do not need to select a pump. The operator will assign
-                    an available pump when your QR code is scanned.
-                </p>
-
-            </div>
-
-        </div>
-
+<div class="app-shell">
+    <header class="topbar">
+        <a class="brand" href="/customer-dashboard"><span class="brand-mark">⛽</span>FuelFlow Pro</a>
+        <div class="topbar-actions"><a class="icon-button" href="/customer-support" aria-label="Help and support">?</a><a class="icon-button" href="/customer-logout" aria-label="Logout">↪</a></div>
+    </header>
+    <main class="page">
+        <p class="eyebrow" id="greeting">Welcome back</p>
+        <h1>Ready for your next journey?</h1>
+        <p class="muted">Manage your fuel tokens in a few taps.</p>
+        <section class="section"><a class="card teal-action" href="/customer-tokens"><span class="action-icon">▦</span><span class="action-copy"><h2>My Fuel Tokens</h2><p>View your tokens and QR codes</p></span><span class="action-arrow">›</span></a></section>
+        <section class="section"><div class="quick-grid">
+            <a class="quick-card quick-tokens" href="/customer-tokens"><span class="quick-icon">▦</span><h3>My Tokens</h3><span>View token status</span></a>
+            <a class="quick-card quick-history" href="/customer-history"><span class="quick-icon">◷</span><h3>Transactions</h3><span>Previous refueling</span></a>
+            <a class="quick-card quick-profile" href="/customer-profile"><span class="quick-icon">◉</span><h3>My Profile</h3><span>Account & security</span></a>
+            <a class="quick-card quick-help" href="/customer-support"><span class="quick-icon">?</span><h3>Help & Support</h3><span>Answers and guidance</span></a>
+        </div></section>
+        <section class="section"><div class="section-heading"><h2>Recent Activity</h2><a class="text-link" href="/customer-history">View All</a></div><div id="recentActivity" class="activity-list"><div class="card empty-state"><div class="empty-icon">◌</div><p>Loading your recent activity…</p></div></div></section>
     </main>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-    <script>
-        async function loadCustomer() {
-            try {
-                const response = await fetch("/api/customer/profile");
-
-                if (!response.ok) {
-                    window.location.href = "/customer-login";
-                    return;
-                }
-
-                const data = await response.json();
-
-                document.getElementById("usernameDisplay").textContent =
-                    data.username;
-
-            } catch (error) {
-                window.location.href = "/customer-login";
-            }
-        }
-
-        document.getElementById("tokenForm").addEventListener("submit", async function(event) {
-            event.preventDefault();
-
-            const vehicleNumber =
-                document.getElementById("vehicleNumber").value.trim();
-
-            const fuelType =
-                document.getElementById("fuelType").value;
-
-            const amount =
-                document.getElementById("amount").value;
-
-            const errorMessage =
-                document.getElementById("errorMessage");
-
-            const generateButton =
-                document.getElementById("generateButton");
-
-            errorMessage.style.display = "none";
-
-            generateButton.disabled = true;
-            generateButton.textContent = "Generating...";
-
-            try {
-                const response = await fetch("/api/tokens", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        vehicle_number: vehicleNumber,
-                        fuel_type: fuelType,
-                        amount: amount
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    errorMessage.textContent =
-                        data.error || "Unable to generate token";
-
-                    errorMessage.style.display = "block";
-                    generateButton.disabled = false;
-                    generateButton.textContent = "Generate Fuel Token";
-                    return;
-                }
-
-                const token = data.token;
-
-                document.getElementById("tokenResult").style.display = "block";
-                document.getElementById("tokenCode").textContent =
-                    token.token_code;
-
-                document.getElementById("resultVehicle").textContent =
-                    token.vehicle_number;
-
-                document.getElementById("resultFuel").textContent =
-                    token.fuel_type;
-
-                document.getElementById("resultAmount").textContent =
-                    token.amount;
-
-                const qrCodeContainer =
-                    document.getElementById("qrcode");
-
-                qrCodeContainer.innerHTML = "";
-
-                new QRCode(qrCodeContainer, {
-                    text: token.token_code,
-                    width: 220,
-                    height: 220
-                });
-
-                document.getElementById("tokenResult").scrollIntoView({
-                    behavior: "smooth"
-                });
-
-            } catch (error) {
-                errorMessage.textContent =
-                    "Unable to connect to the server";
-
-                errorMessage.style.display = "block";
-            }
-
-            generateButton.disabled = false;
-            generateButton.textContent = "Generate Fuel Token";
-
+    <nav class="bottom-nav" aria-label="Customer navigation"><a class="active" href="/customer-dashboard"><span class="nav-icon">⌂</span>Home</a><a href="/customer-tokens"><span class="nav-icon">▦</span>Tokens</a><a href="/customer-history"><span class="nav-icon">◷</span>History</a><a href="/customer-profile"><span class="nav-icon">◉</span>Profile</a></nav>
+</div>
+<script>
+    function formatMoney(value) { return "₹" + Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 }); }
+    function formatDate(value) { if (!value) return "Date pending"; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); }
+    function statusClass(status) { return "badge badge-" + String(status || "UNKNOWN").toUpperCase().replace(/[^A-Z0-9_-]/g, ""); }
+    function renderRecent(records) {
+        const container = document.getElementById("recentActivity"); container.replaceChildren();
+        if (!records.length) { container.innerHTML = '<div class="card empty-state"><div class="empty-icon">◌</div><h3>No activity yet</h3><p>Create a fuel token to begin your journey.</p></div>'; return; }
+        records.slice(0, 3).forEach(record => {
+            const item = document.createElement("article"); item.className = "card activity-item";
+            const icon = document.createElement("span"); icon.className = "activity-icon"; icon.textContent = record.fuel_type === "DIESEL" ? "D" : "P";
+            const copy = document.createElement("div"); copy.className = "activity-copy";
+            const title = document.createElement("strong"); title.textContent = (record.fuel_type || "Fuel") + " · " + (record.pump_number ? "Pump " + record.pump_number : "Pump pending");
+            const detail = document.createElement("small"); detail.textContent = formatDate(record.transaction_completed_at || record.completed_at || record.created_at); copy.append(title, detail);
+            const right = document.createElement("div"); right.style.textAlign = "right";
+            const amount = document.createElement("div"); amount.className = "amount"; amount.textContent = formatMoney(record.amount);
+            const badge = document.createElement("span"); badge.className = statusClass(record.status); badge.textContent = record.status || "UNKNOWN"; right.append(amount, badge); item.append(icon, copy, right); container.appendChild(item);
         });
-
-        loadCustomer();
-    </script>
-
+    }
+    async function loadDashboard() {
+        try {
+            const responses = await Promise.all([fetch("/api/customer/profile"), fetch("/api/customer/transactions")]); const profileResponse = responses[0], transactionsResponse = responses[1];
+            if (profileResponse.status === 401 || transactionsResponse.status === 401) { window.location.href = "/customer-login"; return; }
+            const profile = await profileResponse.json(), transactions = await transactionsResponse.json();
+            if (profileResponse.ok) document.getElementById("greeting").textContent = "Hello, " + (profile.full_name || profile.username || "there"); renderRecent(Array.isArray(transactions) ? transactions : []);
+        } catch (error) { renderRecent([]); }
+    }
+    loadDashboard();
+</script>
 </body>
 </html>
