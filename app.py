@@ -540,6 +540,8 @@ def get_customer_transactions():
 
 
 @app.route("/login")
+@app.route("/admin-login")
+@app.route("/operator-login")
 def login():
     if "username" in session:
         if session.get("role") == "operator":
