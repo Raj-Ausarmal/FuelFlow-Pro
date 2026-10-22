@@ -16,6 +16,14 @@
         <p class="eyebrow" id="greeting">Welcome back</p>
         <h1>Ready for your next journey?</h1>
         <p class="muted">Manage your fuel tokens in a few taps.</p>
+        <section class="section">
+            <div class="section-heading"><h2>My Overview</h2><a class="text-link" href="/customer-tokens">View Tokens</a></div>
+            <div class="summary-grid" id="tokenSummary">
+                <div class="summary-card"><small>Total Tokens</small><strong>—</strong></div>
+                <div class="summary-card active"><small>Active</small><strong>—</strong></div>
+                <div class="summary-card done"><small>Completed</small><strong>—</strong></div>
+            </div>
+        </section>
         <section class="section"><a class="card teal-action" href="/customer-tokens"><span class="action-icon">▦</span><span class="action-copy"><h2>My Fuel Tokens</h2><p>View your tokens and QR codes</p></span><span class="action-arrow">›</span></a></section>
         <section class="section"><div class="quick-grid">
             <a class="quick-card quick-tokens" href="/customer-tokens"><span class="quick-icon">▦</span><h3>My Tokens</h3><span>View token status</span></a>
@@ -45,13 +53,24 @@
             const badge = document.createElement("span"); badge.className = statusClass(record.status); badge.textContent = record.status || "UNKNOWN"; right.append(amount, badge); item.append(icon, copy, right); container.appendChild(item);
         });
     }
+    function renderSummary(records) {
+        const completedStatuses = ["EXPIRED", "COMPLETED"];
+        const active = records.filter(record => !completedStatuses.includes(record.status)).length;
+        const completed = records.filter(record => completedStatuses.includes(record.status)).length;
+        const values = [records.length, active, completed];
+        document.querySelectorAll("#tokenSummary strong").forEach((element, index) => {
+            element.textContent = values[index];
+        });
+    }
     async function loadDashboard() {
         try {
             const responses = await Promise.all([fetch("/api/customer/profile"), fetch("/api/customer/transactions")]); const profileResponse = responses[0], transactionsResponse = responses[1];
             if (profileResponse.status === 401 || transactionsResponse.status === 401) { window.location.href = "/customer-login"; return; }
             const profile = await profileResponse.json(), transactions = await transactionsResponse.json();
-            if (profileResponse.ok) document.getElementById("greeting").textContent = "Hello, " + (profile.full_name || profile.username || "there"); renderRecent(Array.isArray(transactions) ? transactions : []);
-        } catch (error) { renderRecent([]); }
+            const records = Array.isArray(transactions) ? transactions : [];
+            if (profileResponse.ok) document.getElementById("greeting").textContent = "Hello, " + (profile.full_name || profile.username || "there");
+            renderSummary(records); renderRecent(records);
+        } catch (error) { renderSummary([]); renderRecent([]); }
     }
     loadDashboard();
 </script>
