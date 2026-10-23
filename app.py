@@ -539,6 +539,49 @@ def get_customer_transactions():
         connection.close()
 
 
+@app.route("/api/customer/tokens/<token_code>/cancel", methods=["POST"])
+@customer_required
+def cancel_customer_token(token_code):
+    """Cancel an unscanned token owned by the signed-in customer."""
+    normalized_code = token_code.strip().upper()
+
+    if not normalized_code:
+        return jsonify({"error": "Token code is required"}), 400
+
+    connection = get_connection()
+
+    try:
+        token = connection.execute("""
+            SELECT token_code, status
+            FROM tokens
+            WHERE token_code = ? AND customer_id = ?
+        """, (normalized_code, session["customer_id"])).fetchone()
+
+        if token is None:
+            return jsonify({"error": "Token not found"}), 404
+
+        if token["status"] != "WAITING":
+            return jsonify({
+                "error": "Only waiting tokens can be cancelled"
+            }), 409
+
+        connection.execute("""
+            UPDATE tokens
+            SET status = 'CANCELLED'
+            WHERE token_code = ? AND customer_id = ?
+        """, (normalized_code, session["customer_id"]))
+        connection.commit()
+
+        return jsonify({
+            "message": "Fuel token cancelled successfully",
+            "token_code": normalized_code,
+            "status": "CANCELLED"
+        }), 200
+
+    finally:
+        connection.close()
+
+
 @app.route("/login")
 @app.route("/admin-login")
 @app.route("/operator-login")
