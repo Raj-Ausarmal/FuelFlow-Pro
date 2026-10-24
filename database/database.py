@@ -1,11 +1,15 @@
 
 import sqlite3
+import os
 from pathlib import Path
 
-DATABASE_PATH = Path(__file__).parent / "fuelflow.db"
+DATABASE_PATH = Path(
+    os.environ.get("DATABASE_PATH", Path(__file__).parent / "fuelflow.db")
+)
 
 
 def get_connection():
+    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(DATABASE_PATH)
     connection.row_factory = sqlite3.Row
     return connection

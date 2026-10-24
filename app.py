@@ -16,10 +16,14 @@ import secrets
 import io
 import csv
 import sqlite3
+import os
 
 
 app = Flask(__name__)
-app.secret_key = "fuelflow-pro-development-secret-key"
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    "fuelflow-pro-development-secret-key"
+)
 
 
 USERS = {
