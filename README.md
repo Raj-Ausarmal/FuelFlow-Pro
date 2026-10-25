@@ -11,6 +11,17 @@ Open `http://127.0.0.1:5000/customer-login` for customer sign-in,
 `http://127.0.0.1:5000/operator-login` for operator sign-in, or
 `http://127.0.0.1:5000/admin-login` for administrator sign-in.
 
+## Live demo
+
+The public demo is available at
+[fuelflow-pro.onrender.com](https://fuelflow-pro.onrender.com).
+
+- [Customer login](https://fuelflow-pro.onrender.com/customer-login)
+- [Create a customer account](https://fuelflow-pro.onrender.com/customer-register)
+
+The current demo uses Render's free service, which may take a short time to
+start after inactivity and does not provide permanent SQLite storage.
+
 ## Deploy online with Render
 
 FuelFlow-Pro includes `render.yaml` for a Render Blueprint deployment. It uses
