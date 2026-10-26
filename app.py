@@ -9,7 +9,7 @@ from flask import (
     Response
 )
 from database.database import initialize_database, get_connection
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from werkzeug.security import check_password_hash, generate_password_hash
 import secrets
@@ -17,6 +17,11 @@ import io
 import csv
 import sqlite3
 import os
+import re
+import base64
+import urllib.parse
+import urllib.request
+import urllib.error
 
 
 app = Flask(__name__)
@@ -91,6 +96,40 @@ def password_requirement_message(password):
     return None
 
 
+def normalize_phone_number(value):
+    if not isinstance(value, str):
+        return None, "Phone number must be text"
+    phone = value.strip().replace(" ", "").replace("-", "")
+    if not re.fullmatch(r"\+[1-9]\d{7,14}", phone):
+        return None, "Use an international phone number, for example +919876543210"
+    return phone, None
+
+
+def send_reset_sms(phone, otp):
+    """Send a password-reset OTP through Twilio."""
+    account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    from_number = os.environ.get("TWILIO_FROM_NUMBER")
+    if not all([account_sid, auth_token, from_number]):
+        return False
+    payload = urllib.parse.urlencode({
+        "To": phone, "From": from_number,
+        "Body": f"Your FuelFlow Pro password reset code is {otp}. It expires in 10 minutes."
+    }).encode("utf-8")
+    credentials = base64.b64encode(f"{account_sid}:{auth_token}".encode("utf-8")).decode("ascii")
+    sms_request = urllib.request.Request(
+        f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json",
+        data=payload,
+        headers={"Authorization": f"Basic {credentials}", "Content-Type": "application/x-www-form-urlencoded"},
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(sms_request, timeout=10) as response:
+            return 200 <= response.status < 300
+    except (urllib.error.URLError, urllib.error.HTTPError):
+        return False
+
+
 def login_required(role=None):
     def decorator(function):
         @wraps(function)
@@ -156,6 +195,13 @@ def customer_register():
     return render_template("customer_register.html")
 
 
+@app.route("/customer-forgot-password")
+def customer_forgot_password():
+    if "customer_id" in session:
+        return redirect(url_for("customer_dashboard"))
+    return render_template("customer_forgot_password.html")
+
+
 @app.route("/customer-dashboard")
 @customer_required
 def customer_dashboard():
@@ -179,10 +225,14 @@ def customer_register_api():
 
     username = data.get("username")
     password = data.get("password")
+    phone = None
+    phone_error = None
+    if data.get("phone"):
+        phone, phone_error = normalize_phone_number(data.get("phone"))
 
-    if not username or not password:
+    if not username or not password or phone_error:
         return jsonify({
-            "error": "Username and password are required"
+            "error": phone_error or "Username, password, and phone number are required"
         }), 400
 
     username, username_error = validate_customer_username(username)
@@ -216,6 +266,13 @@ def customer_register_api():
             "error": "Username already exists"
         }), 409
 
+    existing_phone = connection.execute("""
+        SELECT id FROM customers WHERE phone = ?
+    """, (phone,)).fetchone()
+    if existing_phone is not None:
+        connection.close()
+        return jsonify({"error": "Phone number already belongs to an account"}), 409
+
     password_hash = generate_password_hash(password)
     created_at = datetime.now().isoformat(timespec="seconds")
 
@@ -224,12 +281,14 @@ def customer_register_api():
             INSERT INTO customers (
                 username,
                 password_hash,
+                phone,
                 created_at
             )
-            VALUES (?, ?, ?)
+            VALUES (?, ?, ?, ?)
         """, (
             username,
             password_hash,
+            phone,
             created_at
         ))
         connection.commit()
@@ -506,6 +565,81 @@ def change_customer_password():
         connection.close()
 
     return jsonify({"message": "Password changed successfully"}), 200
+
+
+@app.route("/api/customer/password-reset/request", methods=["POST"])
+def request_customer_password_reset():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Valid JSON data is required"}), 400
+    phone, phone_error = normalize_phone_number(data.get("phone"))
+    if phone_error:
+        return jsonify({"error": phone_error}), 400
+
+    connection = get_connection()
+    try:
+        customer = connection.execute("SELECT id FROM customers WHERE phone = ?", (phone,)).fetchone()
+        if customer is None:
+            return jsonify({"message": "If an account matches this number, an OTP has been sent."}), 200
+        latest = connection.execute("""
+            SELECT created_at FROM password_reset_otps WHERE customer_id = ? ORDER BY id DESC LIMIT 1
+        """, (customer["id"],)).fetchone()
+        now = datetime.now()
+        if latest and now - datetime.fromisoformat(latest["created_at"]) < timedelta(seconds=60):
+            return jsonify({"error": "Please wait one minute before requesting another OTP"}), 429
+        otp = f"{secrets.randbelow(1_000_000):06d}"
+        if not send_reset_sms(phone, otp):
+            return jsonify({"error": "SMS reset service is unavailable. Please try again later."}), 503
+        connection.execute("UPDATE password_reset_otps SET used_at = ? WHERE customer_id = ? AND used_at IS NULL", (now.isoformat(timespec="seconds"), customer["id"]))
+        connection.execute("""
+            INSERT INTO password_reset_otps (customer_id, phone, otp_hash, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (customer["id"], phone, generate_password_hash(otp), now.isoformat(timespec="seconds"), (now + timedelta(minutes=10)).isoformat(timespec="seconds")))
+        connection.commit()
+    finally:
+        connection.close()
+    return jsonify({"message": "If an account matches this number, an OTP has been sent."}), 200
+
+
+@app.route("/api/customer/password-reset/confirm", methods=["POST"])
+def confirm_customer_password_reset():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Valid JSON data is required"}), 400
+    phone, phone_error = normalize_phone_number(data.get("phone"))
+    otp, new_password, confirm_password = data.get("otp"), data.get("new_password"), data.get("confirm_password")
+    if phone_error or not isinstance(otp, str) or not re.fullmatch(r"\d{6}", otp):
+        return jsonify({"error": phone_error or "Enter the 6-digit OTP"}), 400
+    if not all(isinstance(value, str) and value for value in [new_password, confirm_password]):
+        return jsonify({"error": "New password and confirmation are required"}), 400
+    if len(new_password) > 256:
+        return jsonify({"error": "New password is too long"}), 400
+    password_error = password_requirement_message(new_password)
+    if password_error:
+        return jsonify({"error": password_error}), 400
+    if new_password != confirm_password:
+        return jsonify({"error": "New passwords do not match"}), 400
+
+    connection = get_connection()
+    try:
+        reset = connection.execute("""
+            SELECT r.id, r.customer_id, r.otp_hash, r.expires_at, r.attempt_count
+            FROM password_reset_otps AS r JOIN customers AS c ON c.id = r.customer_id
+            WHERE c.phone = ? AND r.used_at IS NULL ORDER BY r.id DESC LIMIT 1
+        """, (phone,)).fetchone()
+        now = datetime.now()
+        if reset is None or reset["attempt_count"] >= 5 or now > datetime.fromisoformat(reset["expires_at"]):
+            return jsonify({"error": "OTP is invalid or has expired"}), 400
+        if not check_password_hash(reset["otp_hash"], otp):
+            connection.execute("UPDATE password_reset_otps SET attempt_count = attempt_count + 1 WHERE id = ?", (reset["id"],))
+            connection.commit()
+            return jsonify({"error": "OTP is invalid or has expired"}), 400
+        connection.execute("UPDATE customers SET password_hash = ? WHERE id = ?", (generate_password_hash(new_password), reset["customer_id"]))
+        connection.execute("UPDATE password_reset_otps SET used_at = ? WHERE id = ?", (now.isoformat(timespec="seconds"), reset["id"]))
+        connection.commit()
+    finally:
+        connection.close()
+    return jsonify({"message": "Password reset successfully. You can now sign in."}), 200
 
 
 @app.route("/api/customer/transactions", methods=["GET"])

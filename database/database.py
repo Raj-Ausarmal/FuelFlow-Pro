@@ -82,6 +82,24 @@ def initialize_database():
     """)
 
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_otps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            phone TEXT NOT NULL,
+            otp_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            used_at TEXT,
+            attempt_count INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    """)
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_password_reset_otps_customer
+        ON password_reset_otps (customer_id, id DESC)
+    """)
+
+    cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_maintenance_history_pump_date
         ON maintenance_history (pump_number, maintenance_date DESC)
     """)
