@@ -419,66 +419,6 @@
     <div class="loading">Loading pump statuses...</div>
 </div>
 
-    <h2 class="section-title">Pump Maintenance History</h2>
-
-    <div class="table-card">
-        <div id="maintenanceMessage" class="maintenance-message" role="status"></div>
-
-        <form id="maintenanceForm" class="maintenance-form">
-            <div class="date-field">
-                <label for="maintenancePumpNumber">Pump Number</label>
-                <select id="maintenancePumpNumber" required>
-                    <option value="">Select a pump</option>
-                    <option value="1">Pump 1</option>
-                    <option value="2">Pump 2</option>
-                    <option value="3">Pump 3</option>
-                </select>
-            </div>
-
-            <div class="date-field">
-                <label for="maintenanceDate">Maintenance Date</label>
-                <input type="date" id="maintenanceDate" required>
-            </div>
-
-            <div class="date-field full-width">
-                <label for="maintenanceIssue">Issue / Reason</label>
-                <input type="text" id="maintenanceIssue" maxlength="200" required>
-            </div>
-
-            <div class="date-field full-width">
-                <label for="maintenanceNotes">Service Notes (optional)</label>
-                <textarea id="maintenanceNotes" maxlength="2000"></textarea>
-            </div>
-
-            <button type="submit" class="filter-button">Add Maintenance Record</button>
-        </form>
-    </div>
-
-    <div class="table-card">
-        <table>
-            <thead>
-                <tr>
-                    <th>Pump</th>
-                    <th>Maintenance Date</th>
-                    <th>Issue / Reason</th>
-                    <th>Service Notes</th>
-                    <th>Recorded</th>
-                </tr>
-            </thead>
-            <tbody id="maintenanceTable">
-                <tr>
-                    <td colspan="5" class="loading">Loading maintenance history...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-<h2 class="section-title">Pump Usage</h2>
-
-<div class="pump-grid" id="pumpUsage">
-    <div class="loading">Loading pump data...</div>
-</div>
-
     <h2 class="section-title">Transaction History</h2>
 
     <div class="table-card">
@@ -505,6 +445,47 @@
             </tbody>
         </table>
     </div>
+
+    <h2 class="section-title">Pump Maintenance History</h2>
+
+    <div class="table-card">
+        <div id="maintenanceMessage" class="maintenance-message" role="status"></div>
+
+        <form id="maintenanceForm" class="maintenance-form">
+            <div class="date-field">
+                <label for="maintenancePumpNumber">Pump Number</label>
+                <select id="maintenancePumpNumber" required>
+                    <option value="">Select a pump</option>
+                    <option value="1">Pump 1</option>
+                    <option value="2">Pump 2</option>
+                    <option value="3">Pump 3</option>
+                </select>
+            </div>
+            <div class="date-field">
+                <label for="maintenanceDate">Maintenance Date</label>
+                <input type="date" id="maintenanceDate" required>
+            </div>
+            <div class="date-field full-width">
+                <label for="maintenanceIssue">Issue / Reason</label>
+                <input type="text" id="maintenanceIssue" maxlength="200" required>
+            </div>
+            <div class="date-field full-width">
+                <label for="maintenanceNotes">Service Notes (optional)</label>
+                <textarea id="maintenanceNotes" maxlength="2000"></textarea>
+            </div>
+            <button type="submit" class="filter-button">Add Maintenance Record</button>
+        </form>
+    </div>
+
+    <div class="table-card">
+        <table>
+            <thead><tr><th>Pump</th><th>Maintenance Date</th><th>Issue / Reason</th><th>Service Notes</th><th>Recorded</th></tr></thead>
+            <tbody id="maintenanceTable"><tr><td colspan="5" class="loading">Loading maintenance history...</td></tr></tbody>
+        </table>
+    </div>
+
+    <h2 class="section-title">Pump Usage</h2>
+    <div class="pump-grid" id="pumpUsage"><div class="loading">Loading pump data...</div></div>
 
 </div>
 
