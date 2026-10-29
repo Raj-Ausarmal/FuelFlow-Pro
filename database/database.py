@@ -70,6 +70,17 @@ def initialize_database():
     """)
 
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS customer_vehicles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            vehicle_number TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(customer_id, vehicle_number),
+            FOREIGN KEY (customer_id) REFERENCES customers (id)
+        )
+    """)
+
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS maintenance_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             pump_number INTEGER NOT NULL,

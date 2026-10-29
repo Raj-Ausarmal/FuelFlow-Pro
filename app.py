@@ -677,6 +677,51 @@ def get_customer_transactions():
         connection.close()
 
 
+@app.route("/api/customer/vehicles", methods=["GET", "POST"])
+@customer_required
+def customer_vehicles():
+    connection = get_connection()
+    try:
+        if request.method == "GET":
+            vehicles = connection.execute("""
+                SELECT id, vehicle_number FROM customer_vehicles
+                WHERE customer_id = ? ORDER BY vehicle_number
+            """, (session["customer_id"],)).fetchall()
+            return jsonify([dict(vehicle) for vehicle in vehicles]), 200
+
+        data = request.get_json(silent=True)
+        vehicle_number = data.get("vehicle_number") if isinstance(data, dict) else None
+        if not isinstance(vehicle_number, str) or not vehicle_number.strip():
+            return jsonify({"error": "Vehicle number is required"}), 400
+        vehicle_number = vehicle_number.strip().upper()
+        if len(vehicle_number) > 20:
+            return jsonify({"error": "Vehicle number is too long"}), 400
+        connection.execute("""
+            INSERT OR IGNORE INTO customer_vehicles (customer_id, vehicle_number, created_at)
+            VALUES (?, ?, ?)
+        """, (session["customer_id"], vehicle_number, datetime.now().isoformat(timespec="seconds")))
+        connection.commit()
+        return jsonify({"message": "Vehicle saved", "vehicle_number": vehicle_number}), 201
+    finally:
+        connection.close()
+
+
+@app.route("/api/customer/vehicles/<int:vehicle_id>", methods=["DELETE"])
+@customer_required
+def delete_customer_vehicle(vehicle_id):
+    connection = get_connection()
+    try:
+        cursor = connection.execute("""
+            DELETE FROM customer_vehicles WHERE id = ? AND customer_id = ?
+        """, (vehicle_id, session["customer_id"]))
+        connection.commit()
+        if cursor.rowcount == 0:
+            return jsonify({"error": "Vehicle not found"}), 404
+        return jsonify({"message": "Vehicle removed"}), 200
+    finally:
+        connection.close()
+
+
 @app.route("/api/customer/tokens/<token_code>/cancel", methods=["POST"])
 @customer_required
 def cancel_customer_token(token_code):
@@ -1047,6 +1092,10 @@ def create_token():
     created_at = datetime.now().isoformat(timespec="seconds")
 
     connection = get_connection()
+    connection.execute("""
+        INSERT OR IGNORE INTO customer_vehicles (customer_id, vehicle_number, created_at)
+        VALUES (?, ?, ?)
+    """, (session["customer_id"], vehicle_number, created_at))
     connection.execute("""
     INSERT INTO tokens (
         token_code,
