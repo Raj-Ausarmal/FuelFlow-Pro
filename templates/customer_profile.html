@@ -1,16 +1,287 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Profile | FuelFlow Pro</title><link rel="stylesheet" href="{{ url_for('static', filename='customer.css') }}"></head>
-<body><div class="app-shell"><header class="topbar"><a class="brand" href="/customer-dashboard"><span class="brand-mark">⛽</span>FuelFlow Pro</a><div class="topbar-actions"><a class="icon-button" href="/customer-support" aria-label="Help">?</a><a class="icon-button" href="/customer-logout" aria-label="Logout">↪</a></div></header>
-<main class="page"><section class="card profile-hero"><div id="avatar" class="avatar">?</div><h1 id="profileName">Your Profile</h1><p id="profileUsername">Loading account…</p></section>
-<section class="section card form-card"><h2>Account information</h2><div id="profileMessage" class="message" role="status"></div><form id="profileForm"><div class="field"><label for="fullName">Full Name</label><input id="fullName" maxlength="100" autocomplete="name"></div><div class="field"><label for="email">Email Address</label><input id="email" type="email" maxlength="254" autocomplete="email"></div><div class="field"><label for="phone">Phone Number</label><input id="phone" type="tel" maxlength="20" autocomplete="tel"></div><button class="button full" type="submit">Save Profile</button></form></section>
-<section class="section card form-card account-setting"><details><summary><span><strong>Change username</strong><small>Update your sign-in name</small></span><span class="summary-icon" aria-hidden="true">⌄</span></summary><div class="setting-content"><p>Use a unique username with at least 3 characters.</p><div id="usernameMessage" class="message" role="status"></div><form id="usernameForm"><div class="field"><label for="newUsername">New Username</label><input id="newUsername" minlength="3" maxlength="50" autocomplete="username" required></div><button class="button full" type="submit">Update Username</button></form></div></details></section>
-<section class="section card form-card account-setting"><details><summary><span><strong>Change password</strong><small>Keep your account secure</small></span><span class="summary-icon" aria-hidden="true">⌄</span></summary><div class="setting-content"><p>Protect your account with a strong password.</p><ul class="requirements"><li>At least 8 characters</li><li>One uppercase letter</li><li>One number</li><li>One special symbol</li></ul><div id="passwordMessage" class="message" role="status"></div><form id="passwordForm"><div class="field password-field"><label for="currentPassword">Current Password</label><input id="currentPassword" type="password" autocomplete="current-password" required><button class="toggle-password" type="button" data-target="currentPassword" aria-label="Show password">◉</button></div><div class="field password-field"><label for="newPassword">New Password</label><input id="newPassword" type="password" minlength="8" maxlength="256" autocomplete="new-password" required><button class="toggle-password" type="button" data-target="newPassword" aria-label="Show password">◉</button></div><div class="field password-field"><label for="confirmPassword">Confirm New Password</label><input id="confirmPassword" type="password" minlength="8" maxlength="256" autocomplete="new-password" required><button class="toggle-password" type="button" data-target="confirmPassword" aria-label="Show password">◉</button></div><button class="button full" type="submit">Change Password</button></form></div></details></section></main>
-<nav class="bottom-nav" aria-label="Customer navigation"><a href="/customer-dashboard"><span class="nav-icon">⌂</span>Home</a><a href="/customer-tokens"><span class="nav-icon">▦</span>Tokens</a><a href="/customer-history"><span class="nav-icon">◷</span>History</a><a class="active" href="/customer-profile"><span class="nav-icon">◉</span>Profile</a></nav></div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile | FuelFlow Pro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='customer.css') }}">
+</head>
+<body>
+<div class="app-shell">
+    <header class="topbar">
+        <a class="brand" href="/customer-dashboard">
+            <span class="brand-mark">⛽</span>FuelFlow Pro
+        </a>
+        <div class="topbar-actions">
+            <a class="icon-button" href="/customer-support" aria-label="Help">?</a>
+            <a class="icon-button" href="/customer-logout" aria-label="Logout">↪</a>
+        </div>
+    </header>
+
+    <main class="page">
+        <section class="card profile-hero">
+            <div id="avatar" class="avatar">?</div>
+            <h1 id="profileName">Your Profile</h1>
+            <p id="profileUsername">Loading account…</p>
+        </section>
+
+        <!-- Account Information: now expandable -->
+        <section class="section card form-card account-setting">
+            <details>
+                <summary>
+                    <span>
+                        <strong>Account information</strong>
+                        <small>View or update your profile details</small>
+                    </span>
+                    <span class="summary-icon" aria-hidden="true">⌄</span>
+                </summary>
+
+                <div class="setting-content">
+                    <div id="profileMessage" class="message" role="status"></div>
+
+                    <form id="profileForm">
+                        <div class="field">
+                            <label for="fullName">Full Name</label>
+                            <input id="fullName" maxlength="100" autocomplete="name">
+                        </div>
+
+                        <div class="field">
+                            <label for="email">Email Address</label>
+                            <input id="email" type="email" maxlength="254" autocomplete="email">
+                        </div>
+
+                        <div class="field">
+                            <label for="phone">Phone Number</label>
+                            <input id="phone" type="tel" maxlength="20" autocomplete="tel">
+                        </div>
+
+                        <button class="button full" type="submit">Save Profile</button>
+                    </form>
+                </div>
+            </details>
+        </section>
+
+        <section class="section card form-card account-setting">
+            <details>
+                <summary>
+                    <span>
+                        <strong>Change username</strong>
+                        <small>Update your sign-in name</small>
+                    </span>
+                    <span class="summary-icon" aria-hidden="true">⌄</span>
+                </summary>
+
+                <div class="setting-content">
+                    <p>Use a unique username with at least 3 characters.</p>
+                    <div id="usernameMessage" class="message" role="status"></div>
+
+                    <form id="usernameForm">
+                        <div class="field">
+                            <label for="newUsername">New Username</label>
+                            <input id="newUsername" minlength="3" maxlength="50" autocomplete="username" required>
+                        </div>
+                        <button class="button full" type="submit">Update Username</button>
+                    </form>
+                </div>
+            </details>
+        </section>
+
+        <section class="section card form-card account-setting">
+            <details>
+                <summary>
+                    <span>
+                        <strong>Change password</strong>
+                        <small>Keep your account secure</small>
+                    </span>
+                    <span class="summary-icon" aria-hidden="true">⌄</span>
+                </summary>
+
+                <div class="setting-content">
+                    <p>Protect your account with a strong password.</p>
+
+                    <ul class="requirements">
+                        <li>At least 8 characters</li>
+                        <li>One uppercase letter</li>
+                        <li>One number</li>
+                        <li>One special symbol</li>
+                    </ul>
+
+                    <div id="passwordMessage" class="message" role="status"></div>
+
+                    <form id="passwordForm">
+                        <div class="field password-field">
+                            <label for="currentPassword">Current Password</label>
+                            <input id="currentPassword" type="password" autocomplete="current-password" required>
+                            <button class="toggle-password" type="button" data-target="currentPassword" aria-label="Show password">◉</button>
+                        </div>
+
+                        <div class="field password-field">
+                            <label for="newPassword">New Password</label>
+                            <input id="newPassword" type="password" minlength="8" maxlength="256" autocomplete="new-password" required>
+                            <button class="toggle-password" type="button" data-target="newPassword" aria-label="Show password">◉</button>
+                        </div>
+
+                        <div class="field password-field">
+                            <label for="confirmPassword">Confirm New Password</label>
+                            <input id="confirmPassword" type="password" minlength="8" maxlength="256" autocomplete="new-password" required>
+                            <button class="toggle-password" type="button" data-target="confirmPassword" aria-label="Show password">◉</button>
+                        </div>
+
+                        <button class="button full" type="submit">Change Password</button>
+                    </form>
+                </div>
+            </details>
+        </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Customer navigation">
+        <a href="/customer-dashboard"><span class="nav-icon">⌂</span>Home</a>
+        <a href="/customer-tokens"><span class="nav-icon">▦</span>Tokens</a>
+        <a href="/customer-history"><span class="nav-icon">◷</span>History</a>
+        <a class="active" href="/customer-profile"><span class="nav-icon">◉</span>Profile</a>
+    </nav>
+</div>
+
 <script>
-function show(id,text,type){const node=document.getElementById(id);node.textContent=text;node.className="message "+type;}function initial(value){return String(value||"?").trim().charAt(0).toUpperCase()||"?";}function passwordErrors(password){const errors=[];if(password.length<8)errors.push("at least 8 characters");if(!/[A-Z]/.test(password))errors.push("at least one uppercase letter");if(!/[0-9]/.test(password))errors.push("at least one number");if(!/[^A-Za-z0-9\s]/.test(password))errors.push("at least one special symbol");return errors;}
-async function loadProfile(){try{const response=await fetch("/api/customer/profile");if(response.status===401){window.location.href="/customer-login";return;}const data=await response.json();if(!response.ok)throw new Error(data.error);const name=data.full_name||data.username;document.getElementById("profileName").textContent=name;document.getElementById("profileUsername").textContent="@"+data.username;document.getElementById("avatar").textContent=initial(name);document.getElementById("fullName").value=data.full_name||"";document.getElementById("email").value=data.email||"";document.getElementById("phone").value=data.phone||"";}catch(error){show("profileMessage","Could not load your profile.","error");}}
-document.getElementById("profileForm").addEventListener("submit",async event=>{event.preventDefault();try{const response=await fetch("/api/customer/profile",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({full_name:fullName.value,email:email.value,phone:phone.value})});const data=await response.json();if(!response.ok)throw new Error(data.error);show("profileMessage",data.message,"success");await loadProfile();}catch(error){show("profileMessage",error.message||"Could not save profile.","error");}});
-document.getElementById("usernameForm").addEventListener("submit",async event=>{event.preventDefault();const form=event.currentTarget;try{const response=await fetch("/api/customer/change-username",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:document.getElementById("newUsername").value})});const data=await response.json();if(!response.ok)throw new Error(data.error);form.reset();show("usernameMessage",data.message,"success");await loadProfile();}catch(error){show("usernameMessage",error.message||"Could not change username.","error");}});
-document.getElementById("passwordForm").addEventListener("submit",async event=>{event.preventDefault();const form=event.currentTarget,newValue=document.getElementById("newPassword").value,confirmValue=document.getElementById("confirmPassword").value;if(newValue!==confirmValue){show("passwordMessage","New passwords do not match.","error");return;}const errors=passwordErrors(newValue);if(errors.length){show("passwordMessage","Password must include "+errors.join("; ")+".","error");return;}try{const response=await fetch("/api/customer/change-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({current_password:document.getElementById("currentPassword").value,new_password:newValue,confirm_password:confirmValue})});const data=await response.json();if(!response.ok)throw new Error(data.error);form.reset();show("passwordMessage",data.message,"success");}catch(error){show("passwordMessage",error.message||"Could not change password.","error");}});
-document.querySelectorAll(".toggle-password").forEach(button=>button.addEventListener("click",()=>{const input=document.getElementById(button.dataset.target);input.type=input.type==="password"?"text":"password";button.textContent=input.type==="password"?"◉":"◌";}));loadProfile();
-</script></body></html>
+function show(id, text, type) {
+    const node = document.getElementById(id);
+    node.textContent = text;
+    node.className = "message " + type;
+}
+
+function initial(value) {
+    return String(value || "?").trim().charAt(0).toUpperCase() || "?";
+}
+
+function passwordErrors(password) {
+    const errors = [];
+    if (password.length < 8) errors.push("at least 8 characters");
+    if (!/[A-Z]/.test(password)) errors.push("at least one uppercase letter");
+    if (!/[0-9]/.test(password)) errors.push("at least one number");
+    if (!/[^A-Za-z0-9\s]/.test(password)) errors.push("at least one special symbol");
+    return errors;
+}
+
+async function loadProfile() {
+    try {
+        const response = await fetch("/api/customer/profile");
+
+        if (response.status === 401) {
+            window.location.href = "/customer-login";
+            return;
+        }
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        const name = data.full_name || data.username;
+        document.getElementById("profileName").textContent = name;
+        document.getElementById("profileUsername").textContent = "@" + data.username;
+        document.getElementById("avatar").textContent = initial(name);
+        document.getElementById("fullName").value = data.full_name || "";
+        document.getElementById("email").value = data.email || "";
+        document.getElementById("phone").value = data.phone || "";
+    } catch (error) {
+        show("profileMessage", "Could not load your profile.", "error");
+    }
+}
+
+document.getElementById("profileForm").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    try {
+        const response = await fetch("/api/customer/profile", {
+            method: "PUT",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                full_name: document.getElementById("fullName").value,
+                email: document.getElementById("email").value,
+                phone: document.getElementById("phone").value
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        show("profileMessage", data.message, "success");
+        await loadProfile();
+    } catch (error) {
+        show("profileMessage", error.message || "Could not save profile.", "error");
+    }
+});
+
+document.getElementById("usernameForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+
+    try {
+        const response = await fetch("/api/customer/change-username", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                username: document.getElementById("newUsername").value
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        form.reset();
+        show("usernameMessage", data.message, "success");
+        await loadProfile();
+    } catch (error) {
+        show("usernameMessage", error.message || "Could not change username.", "error");
+    }
+});
+
+document.getElementById("passwordForm").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const newValue = document.getElementById("newPassword").value;
+    const confirmValue = document.getElementById("confirmPassword").value;
+
+    if (newValue !== confirmValue) {
+        show("passwordMessage", "New passwords do not match.", "error");
+        return;
+    }
+
+    const errors = passwordErrors(newValue);
+    if (errors.length) {
+        show("passwordMessage", "Password must include " + errors.join("; ") + ".", "error");
+        return;
+    }
+
+    try {
+        const response = await fetch("/api/customer/change-password", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                current_password: document.getElementById("currentPassword").value,
+                new_password: newValue,
+                confirm_password: confirmValue
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error);
+
+        form.reset();
+        show("passwordMessage", data.message, "success");
+    } catch (error) {
+        show("passwordMessage", error.message || "Could not change password.", "error");
+    }
+});
+
+document.querySelectorAll(".toggle-password").forEach(button => {
+    button.addEventListener("click", () => {
+        const input = document.getElementById(button.dataset.target);
+        input.type = input.type === "password" ? "text" : "password";
+        button.textContent = input.type === "password" ? "◉" : "◌";
+    });
+});
+
+loadProfile();
+</script>
+</body>
+</html>
