@@ -277,7 +277,7 @@ document.querySelectorAll(".toggle-password").forEach(button => {
     button.addEventListener("click", () => {
         const input = document.getElementById(button.dataset.target);
         input.type = input.type === "password" ? "text" : "password";
-        button.textContent = input.type === "password" ? "◉" : "◌";
+        button.textContent = input.type === "password" ? "👁" : "🙈";
     });
 });
 
