@@ -63,10 +63,10 @@
                 <span id="tokenCount" class="token-count">Loading tokens…</span>
                 <select id="tokenStatusFilter" aria-label="Filter tokens by status">
                     <option value="">All statuses</option>
-                    <option value="WAITING">Waiting</option>
-                    <option value="AUTHORIZED">Authorized</option>
-                    <option value="EXPIRED">Completed</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="USED">Used</option>
                     <option value="CANCELLED">Cancelled</option>
+                    <option value="EXPIRED">Expired</option>
                 </select>
             </div>
 
@@ -145,15 +145,39 @@ const date = value => {
         });
 };
 
+/*
+ * Translate backend status codes into customer-friendly labels.
+ * WAITING and AUTHORIZED are treated as active tokens.
+ */
+function getStatusInfo(status) {
+    const normalized = String(status || "UNKNOWN").toUpperCase();
+
+    const statusMap = {
+        WAITING:    { label: "Active", category: "ACTIVE" },
+        AUTHORIZED: { label: "Active", category: "ACTIVE" },
+        ACTIVE:     { label: "Active", category: "ACTIVE" },
+        COMPLETED:  { label: "Used", category: "USED" },
+        USED:       { label: "Used", category: "USED" },
+        CANCELLED:  { label: "Cancelled", category: "CANCELLED" },
+        EXPIRED:    { label: "Expired", category: "EXPIRED" }
+    };
+
+    return statusMap[normalized] || {
+        label: normalized.replaceAll("_", " "),
+        category: normalized
+    };
+}
+
 function showMessage(text, type) {
     messageBox.textContent = text;
     messageBox.className = "message " + type;
 }
 
 function makeBadge(status) {
+    const info = getStatusInfo(status);
     const badge = document.createElement("span");
-    badge.className = "badge badge-" + String(status || "UNKNOWN").replace(/[^A-Z0-9_-]/g, "");
-    badge.textContent = status || "UNKNOWN";
+    badge.className = "badge badge-" + info.category;
+    badge.textContent = info.label;
     return badge;
 }
 
@@ -268,7 +292,10 @@ function card(token) {
 }
 
 function render() {
-    const shown = tokens.filter(token => !filter.value || token.status === filter.value);
+    const shown = tokens.filter(token => {
+        if (!filter.value) return true;
+        return getStatusInfo(token.status).category === filter.value;
+    });
 
     count.textContent =
         shown.length + " of " + tokens.length + " token" + (tokens.length === 1 ? "" : "s");
