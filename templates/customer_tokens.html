@@ -6,6 +6,39 @@
     <title>My Tokens | FuelFlow Pro</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='customer.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        .token-status-summary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin: 14px 0;
+        }
+
+        .status-summary-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 14px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: var(--card-background, #fff);
+        }
+
+        .status-summary-item span {
+            color: #6b7280;
+            font-size: 0.85rem;
+        }
+
+        .status-summary-item strong {
+            font-size: 1.4rem;
+        }
+
+        @media (max-width: 600px) {
+            .token-status-summary {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
 </head>
 <body>
 <div class="app-shell">
@@ -68,6 +101,25 @@
                     <option value="CANCELLED">Cancelled</option>
                     <option value="EXPIRED">Expired</option>
                 </select>
+            </div>
+
+            <div class="token-status-summary" id="tokenStatusSummary" aria-label="Token status summary">
+                <div class="status-summary-item">
+                    <span>Active</span>
+                    <strong id="activeTokenCount">0</strong>
+                </div>
+                <div class="status-summary-item">
+                    <span>Used</span>
+                    <strong id="usedTokenCount">0</strong>
+                </div>
+                <div class="status-summary-item">
+                    <span>Cancelled</span>
+                    <strong id="cancelledTokenCount">0</strong>
+                </div>
+                <div class="status-summary-item">
+                    <span>Expired</span>
+                    <strong id="expiredTokenCount">0</strong>
+                </div>
             </div>
 
             <div id="tokenList" class="token-list"></div>
@@ -145,10 +197,6 @@ const date = value => {
         });
 };
 
-/*
- * Translate backend status codes into customer-friendly labels.
- * WAITING and AUTHORIZED are treated as active tokens.
- */
 function getStatusInfo(status) {
     const normalized = String(status || "UNKNOWN").toUpperCase();
 
@@ -292,6 +340,25 @@ function card(token) {
 }
 
 function render() {
+    const statusCounts = {
+        ACTIVE: 0,
+        USED: 0,
+        CANCELLED: 0,
+        EXPIRED: 0
+    };
+
+    tokens.forEach(token => {
+        const category = getStatusInfo(token.status).category;
+        if (Object.prototype.hasOwnProperty.call(statusCounts, category)) {
+            statusCounts[category]++;
+        }
+    });
+
+    document.getElementById("activeTokenCount").textContent = statusCounts.ACTIVE;
+    document.getElementById("usedTokenCount").textContent = statusCounts.USED;
+    document.getElementById("cancelledTokenCount").textContent = statusCounts.CANCELLED;
+    document.getElementById("expiredTokenCount").textContent = statusCounts.EXPIRED;
+
     const shown = tokens.filter(token => {
         if (!filter.value) return true;
         return getStatusInfo(token.status).category === filter.value;
