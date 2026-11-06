@@ -1,7 +1,7 @@
-
 import sqlite3
 import os
 from pathlib import Path
+from datetime import datetime, timedelta
 
 DATABASE_PATH = Path(
     os.environ.get("DATABASE_PATH", Path(__file__).parent / "fuelflow.db")
@@ -40,7 +40,8 @@ def initialize_database():
             created_at TEXT NOT NULL,
             scanned_at TEXT,
             completed_at TEXT,
-            customer_id INTEGER
+            customer_id INTEGER,
+            expires_at TEXT
         )
     """)
 
@@ -105,6 +106,7 @@ def initialize_database():
             FOREIGN KEY (customer_id) REFERENCES customers (id)
         )
     """)
+
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_password_reset_otps_customer
         ON password_reset_otps (customer_id, id DESC)
@@ -144,6 +146,40 @@ def initialize_database():
         cursor.execute(
             "ALTER TABLE tokens ADD COLUMN customer_id INTEGER"
         )
+
+    if "expires_at" not in token_columns:
+        cursor.execute(
+            "ALTER TABLE tokens ADD COLUMN expires_at TEXT"
+        )
+
+    # Give existing tokens an expiry time based on their creation time.
+    legacy_tokens = cursor.execute("""
+        SELECT id, created_at
+        FROM tokens
+        WHERE expires_at IS NULL
+    """).fetchall()
+
+    for token in legacy_tokens:
+        try:
+            created_at = datetime.fromisoformat(token["created_at"])
+            expires_at = (
+                created_at + timedelta(hours=12)
+            ).isoformat(timespec="seconds")
+
+            cursor.execute("""
+                UPDATE tokens
+                SET expires_at = ?
+                WHERE id = ?
+            """, (expires_at, token["id"]))
+
+        except (TypeError, ValueError):
+            # Leave malformed legacy timestamps unchanged.
+            continue
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_tokens_status_expires_at
+        ON tokens (status, expires_at)
+    """)
 
     for pump_number in range(1, 4):
         cursor.execute("""

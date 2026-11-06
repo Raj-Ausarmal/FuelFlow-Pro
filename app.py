@@ -22,15 +22,11 @@ import base64
 import urllib.parse
 import urllib.request
 import urllib.error
-
-
 app = Flask(__name__)
 app.secret_key = os.environ.get(
     "SECRET_KEY",
     "fuelflow-pro-development-secret-key"
 )
-
-
 USERS = {
     "operator": {
         "password": generate_password_hash("operator123"),
@@ -41,61 +37,39 @@ USERS = {
         "role": "admin"
     }
 }
-
-
 initialize_database()
-
-
 def validate_customer_username(value):
     """Return a normalized username and a validation error, when applicable."""
     if not isinstance(value, str):
         return None, "Username must be text"
-
     username = value.strip().lower()
-
     if not username:
         return None, "Username is required"
-
     if len(username) < 3:
         return None, "Username must contain at least 3 characters"
-
     if len(username) > 50:
         return None, "Username must be 50 characters or fewer"
-
     return username, None
-
-
 def get_password_requirement_errors(password):
     """Return every password-strength requirement that has not been met."""
     errors = []
-
     if len(password) < 8:
         errors.append("at least 8 characters")
-
     if not any("A" <= character <= "Z" for character in password):
         errors.append("at least one uppercase letter")
-
     if not any("0" <= character <= "9" for character in password):
         errors.append("at least one number")
-
     if not any(
         not character.isalnum() and not character.isspace()
         for character in password
     ):
         errors.append("at least one special symbol")
-
     return errors
-
-
 def password_requirement_message(password):
     errors = get_password_requirement_errors(password)
-
     if errors:
         return "Password must include " + "; ".join(errors) + "."
-
     return None
-
-
 def normalize_phone_number(value):
     if not isinstance(value, str):
         return None, "Phone number must be text"
@@ -103,8 +77,6 @@ def normalize_phone_number(value):
     if not re.fullmatch(r"\+[1-9]\d{7,14}", phone):
         return None, "Use an international phone number, for example +919876543210"
     return phone, None
-
-
 def send_reset_sms(phone, otp):
     """Send a password-reset OTP through Twilio."""
     account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
@@ -128,8 +100,6 @@ def send_reset_sms(phone, otp):
             return 200 <= response.status < 300
     except (urllib.error.URLError, urllib.error.HTTPError):
         return False
-
-
 def login_required(role=None):
     def decorator(function):
         @wraps(function)
@@ -140,7 +110,6 @@ def login_required(role=None):
                         "error": "Authentication required"
                     }), 401
                 return redirect(url_for("login"))
-
             if role is not None:
                 if session.get("role") != role:
                     if request.path.startswith("/api/"):
@@ -148,14 +117,9 @@ def login_required(role=None):
                             "error": "Access denied"
                         }), 403
                     return redirect(url_for("login"))
-
             return function(*args, **kwargs)
-
         return wrapper
-
     return decorator
-
-
 def customer_required(function):
     @wraps(function)
     def wrapper(*args, **kwargs):
@@ -165,117 +129,99 @@ def customer_required(function):
                     "error": "Customer authentication required"
                 }), 401
             return redirect(url_for("customer_login"))
-
         return function(*args, **kwargs)
-
     return wrapper
 
 
+def expire_waiting_tokens(connection, customer_id=None):
+    """Expire waiting tokens whose 12-hour validity period has ended."""
+    now = datetime.now().isoformat(timespec="seconds")
+    query = """
+        UPDATE tokens
+        SET status = 'EXPIRED'
+        WHERE status = 'WAITING'
+          AND expires_at IS NOT NULL
+          AND expires_at <= ?
+    """
+    parameters = [now]
+    if customer_id is not None:
+        query += " AND customer_id = ?"
+        parameters.append(customer_id)
+    connection.execute(query, parameters)
 @app.route("/")
 def home():
     if "customer_id" in session:
         return redirect(url_for("customer_dashboard"))
-
     return redirect(url_for("customer_login"))
-
-
 @app.route("/customer-login")
 def customer_login():
     if "customer_id" in session:
         return redirect(url_for("customer_dashboard"))
-
     return render_template("customer_login.html")
-
-
 @app.route("/customer-register")
 def customer_register():
     if "customer_id" in session:
         return redirect(url_for("customer_dashboard"))
-
     return render_template("customer_register.html")
-
-
 @app.route("/customer-forgot-password")
 def customer_forgot_password():
     if "customer_id" in session:
         return redirect(url_for("customer_dashboard"))
     return render_template("customer_forgot_password.html")
-
-
 @app.route("/customer-dashboard")
 @customer_required
 def customer_dashboard():
     return render_template("customer.html")
-
-
 @app.route("/customer-tokens")
 @customer_required
 def customer_tokens_page():
     return render_template("customer_tokens.html")
-
-
 @app.route("/api/customer/register", methods=["POST"])
 def customer_register_api():
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({
             "error": "Valid JSON data is required"
         }), 400
-
     username = data.get("username")
     password = data.get("password")
     phone = None
     phone_error = None
     if data.get("phone"):
         phone, phone_error = normalize_phone_number(data.get("phone"))
-
     if not username or not password or phone_error:
         return jsonify({
             "error": phone_error or "Username, password, and phone number are required"
         }), 400
-
     username, username_error = validate_customer_username(username)
-
     if username_error:
         return jsonify({"error": username_error}), 400
-
     if not isinstance(password, str):
         return jsonify({"error": "Password must be text"}), 400
-
     password_error = password_requirement_message(password)
-
     if password_error:
         return jsonify({"error": password_error}), 400
-
     if len(password) > 256:
         return jsonify({"error": "Password is too long"}), 400
-
     connection = get_connection()
-
     existing_customer = connection.execute("""
         SELECT id
         FROM customers
         WHERE username = ?
     """, (username,)).fetchone()
-
     if existing_customer is not None:
         connection.close()
-
         return jsonify({
             "error": "Username already exists"
         }), 409
-
     existing_phone = connection.execute("""
         SELECT id FROM customers WHERE phone = ?
     """, (phone,)).fetchone()
     if existing_phone is not None:
         connection.close()
         return jsonify({"error": "Phone number already belongs to an account"}), 409
-
     password_hash = generate_password_hash(password)
     created_at = datetime.now().isoformat(timespec="seconds")
-
     try:
         cursor = connection.execute("""
             INSERT INTO customers (
@@ -298,144 +244,101 @@ def customer_register_api():
         return jsonify({"error": "Username already exists"}), 409
     finally:
         connection.close()
-
     session.clear()
     session["customer_id"] = customer_id
     session["customer_username"] = username
-
     return jsonify({
         "message": "Customer registration successful",
         "username": username
     }), 201
-
-
 @app.route("/api/customer/login", methods=["POST"])
 def customer_login_api():
     data = request.get_json()
-
     if not data:
         return jsonify({
             "error": "Request body is required"
         }), 400
-
     username = data.get("username")
     password = data.get("password")
-
     if not username or not password:
         return jsonify({
             "error": "Username and password are required"
         }), 400
-
     username = username.strip().lower()
-
     connection = get_connection()
-
     customer = connection.execute("""
         SELECT id, username, password_hash
         FROM customers
         WHERE username = ?
     """, (username,)).fetchone()
-
     connection.close()
-
     if customer is None:
         return jsonify({
             "error": "Invalid username or password"
         }), 401
-
     if not check_password_hash(customer["password_hash"], password):
         return jsonify({
             "error": "Invalid username or password"
         }), 401
-
     session.clear()
     session["customer_id"] = customer["id"]
     session["customer_username"] = customer["username"]
-
     return jsonify({
         "message": "Customer login successful",
         "username": customer["username"]
     }), 200
-
-
 @app.route("/customer-logout")
 def customer_logout():
     session.pop("customer_id", None)
     session.pop("customer_username", None)
-
     return redirect(url_for("customer_login"))
-
-
-
 @app.route("/customer-profile")
 @customer_required
 def customer_profile_page():
     return render_template("customer_profile.html")
-
-
 @app.route("/customer-history")
 @customer_required
 def customer_history_page():
     return render_template("customer_history.html")
-
-
 @app.route("/customer-support")
 @customer_required
 def customer_support_page():
     return render_template("customer_support.html")
-
-
-
 @app.route("/api/customer/profile", methods=["GET"])
 @customer_required
 def customer_profile():
     connection = get_connection()
-
     customer = connection.execute("""
         SELECT username, full_name, email, phone, created_at
         FROM customers
         WHERE id = ?
     """, (session["customer_id"],)).fetchone()
-
     connection.close()
-
     if customer is None:
         session.clear()
         return jsonify({"error": "Customer account not found"}), 404
-
     return jsonify(dict(customer)), 200
-
-
 @app.route("/api/customer/profile", methods=["PUT"])
 @customer_required
 def update_customer_profile():
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({"error": "Valid JSON data is required"}), 400
-
     full_name = data.get("full_name", "")
     email = data.get("email", "")
     phone = data.get("phone", "")
-
     if not all(isinstance(value, str) for value in [full_name, email, phone]):
         return jsonify({"error": "Profile fields must be text"}), 400
-
     full_name = full_name.strip()
     email = email.strip().lower()
     phone = phone.strip()
-
     if len(full_name) > 100:
         return jsonify({"error": "Name must be 100 characters or fewer"}), 400
-
     if len(email) > 254 or len(phone) > 20:
         return jsonify({"error": "Email or phone number is too long"}), 400
-
     if email and ("@" not in email or email.startswith("@") or email.endswith("@")):
         return jsonify({"error": "Enter a valid email address"}), 400
-
     connection = get_connection()
-
     try:
         connection.execute("""
             UPDATE customers
@@ -447,40 +350,28 @@ def update_customer_profile():
             phone or None,
             session["customer_id"]
         ))
-
         connection.commit()
-
     finally:
         connection.close()
-
     return jsonify({"message": "Profile updated successfully"}), 200
-
-
 @app.route("/api/customer/change-username", methods=["POST"])
 @customer_required
 def change_customer_username():
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({"error": "Valid JSON data is required"}), 400
-
     username, username_error = validate_customer_username(data.get("username"))
-
     if username_error:
         return jsonify({"error": username_error}), 400
-
     connection = get_connection()
-
     try:
         existing_customer = connection.execute("""
             SELECT id
             FROM customers
             WHERE username = ? AND id != ?
         """, (username, session["customer_id"])).fetchone()
-
         if existing_customer is not None:
             return jsonify({"error": "Username already exists"}), 409
-
         connection.execute("""
             UPDATE customers
             SET username = ?
@@ -495,61 +386,45 @@ def change_customer_username():
         return jsonify({"error": "Unable to update username. Please try again."}), 500
     finally:
         connection.close()
-
     session["customer_username"] = username
-
     return jsonify({
         "message": "Username updated successfully",
         "username": username
     }), 200
-
-
 @app.route("/api/customer/change-password", methods=["POST"])
 @customer_required
 def change_customer_password():
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({"error": "Valid JSON data is required"}), 400
-
     current_password = data.get("current_password")
     new_password = data.get("new_password")
     confirm_password = data.get("confirm_password")
-
     if not all(isinstance(value, str) and value for value in [
         current_password, new_password, confirm_password
     ]):
         return jsonify({"error": "All password fields are required"}), 400
-
     if len(new_password) > 256:
         return jsonify({"error": "New password is too long"}), 400
-
     password_error = password_requirement_message(new_password)
-
     if password_error:
         return jsonify({"error": password_error}), 400
-
     if new_password != confirm_password:
         return jsonify({"error": "New passwords do not match"}), 400
-
     connection = get_connection()
-
     try:
         customer = connection.execute("""
             SELECT password_hash
             FROM customers
             WHERE id = ?
         """, (session["customer_id"],)).fetchone()
-
         if customer is None:
             session.clear()
             return jsonify({"error": "Customer account not found"}), 404
-
         if not check_password_hash(
             customer["password_hash"], current_password
         ):
             return jsonify({"error": "Current password is incorrect"}), 400
-
         connection.execute("""
             UPDATE customers
             SET password_hash = ?
@@ -558,15 +433,10 @@ def change_customer_password():
             generate_password_hash(new_password),
             session["customer_id"]
         ))
-
         connection.commit()
-
     finally:
         connection.close()
-
     return jsonify({"message": "Password changed successfully"}), 200
-
-
 @app.route("/api/customer/password-reset/request", methods=["POST"])
 def request_customer_password_reset():
     data = request.get_json(silent=True)
@@ -575,7 +445,6 @@ def request_customer_password_reset():
     phone, phone_error = normalize_phone_number(data.get("phone"))
     if phone_error:
         return jsonify({"error": phone_error}), 400
-
     connection = get_connection()
     try:
         customer = connection.execute("SELECT id FROM customers WHERE phone = ?", (phone,)).fetchone()
@@ -599,8 +468,6 @@ def request_customer_password_reset():
     finally:
         connection.close()
     return jsonify({"message": "If an account matches this number, an OTP has been sent."}), 200
-
-
 @app.route("/api/customer/password-reset/confirm", methods=["POST"])
 def confirm_customer_password_reset():
     data = request.get_json(silent=True)
@@ -619,7 +486,6 @@ def confirm_customer_password_reset():
         return jsonify({"error": password_error}), 400
     if new_password != confirm_password:
         return jsonify({"error": "New passwords do not match"}), 400
-
     connection = get_connection()
     try:
         reset = connection.execute("""
@@ -640,14 +506,12 @@ def confirm_customer_password_reset():
     finally:
         connection.close()
     return jsonify({"message": "Password reset successfully. You can now sign in."}), 200
-
-
 @app.route("/api/customer/transactions", methods=["GET"])
 @customer_required
 def get_customer_transactions():
     connection = get_connection()
-
     try:
+        expire_waiting_tokens(connection, session["customer_id"])
         transactions = connection.execute("""
             SELECT
                 t.token_code,
@@ -657,6 +521,7 @@ def get_customer_transactions():
                 t.pump_number,
                 t.status,
                 t.created_at,
+                t.expires_at,
                 t.scanned_at,
                 t.completed_at,
                 tr.started_at,
@@ -667,15 +532,10 @@ def get_customer_transactions():
             WHERE t.customer_id = ?
             ORDER BY t.id DESC
         """, (session["customer_id"],)).fetchall()
-
-        return jsonify([
-            dict(transaction)
-            for transaction in transactions
-        ]), 200
-
+        connection.commit()
+        return jsonify([dict(transaction) for transaction in transactions]), 200
     finally:
         connection.close()
-
 
 @app.route("/api/customer/vehicles", methods=["GET", "POST"])
 @customer_required
@@ -688,7 +548,6 @@ def customer_vehicles():
                 WHERE customer_id = ? ORDER BY vehicle_number
             """, (session["customer_id"],)).fetchall()
             return jsonify([dict(vehicle) for vehicle in vehicles]), 200
-
         data = request.get_json(silent=True)
         vehicle_number = data.get("vehicle_number") if isinstance(data, dict) else None
         if not isinstance(vehicle_number, str) or not vehicle_number.strip():
@@ -704,8 +563,6 @@ def customer_vehicles():
         return jsonify({"message": "Vehicle saved", "vehicle_number": vehicle_number}), 201
     finally:
         connection.close()
-
-
 @app.route("/api/customer/vehicles/<int:vehicle_id>", methods=["DELETE"])
 @customer_required
 def delete_customer_vehicle(vehicle_id):
@@ -720,20 +577,17 @@ def delete_customer_vehicle(vehicle_id):
         return jsonify({"message": "Vehicle removed"}), 200
     finally:
         connection.close()
-
-
 @app.route("/api/customer/tokens/<token_code>/cancel", methods=["POST"])
 @customer_required
 def cancel_customer_token(token_code):
     """Cancel an unscanned token owned by the signed-in customer."""
     normalized_code = token_code.strip().upper()
-
     if not normalized_code:
         return jsonify({"error": "Token code is required"}), 400
 
     connection = get_connection()
-
     try:
+        expire_waiting_tokens(connection, session["customer_id"])
         token = connection.execute("""
             SELECT token_code, status
             FROM tokens
@@ -742,11 +596,11 @@ def cancel_customer_token(token_code):
 
         if token is None:
             return jsonify({"error": "Token not found"}), 404
-
+        if token["status"] == "EXPIRED":
+            connection.commit()
+            return jsonify({"error": "This token has expired and cannot be cancelled."}), 409
         if token["status"] != "WAITING":
-            return jsonify({
-                "error": "Only waiting tokens can be cancelled"
-            }), 409
+            return jsonify({"error": "Only waiting tokens can be cancelled"}), 409
 
         connection.execute("""
             UPDATE tokens
@@ -754,16 +608,13 @@ def cancel_customer_token(token_code):
             WHERE token_code = ? AND customer_id = ?
         """, (normalized_code, session["customer_id"]))
         connection.commit()
-
         return jsonify({
             "message": "Fuel token cancelled successfully",
             "token_code": normalized_code,
             "status": "CANCELLED"
         }), 200
-
     finally:
         connection.close()
-
 
 @app.route("/login")
 @app.route("/admin-login")
@@ -772,87 +623,62 @@ def login():
     if "username" in session:
         if session.get("role") == "operator":
             return redirect(url_for("operator"))
-
         if session.get("role") == "admin":
             return redirect(url_for("admin"))
-
     return render_template("login.html")
-
-
 @app.route("/api/login", methods=["POST"])
 def login_api():
     data = request.get_json()
-
     if not data:
         return jsonify({
             "error": "Request body is required"
         }), 400
-
     username = data.get("username")
     password = data.get("password")
-
     if not username or not password:
         return jsonify({
             "error": "Username and password are required"
         }), 400
-
     username = username.strip().lower()
-
     user = USERS.get(username)
-
     if user is None:
         return jsonify({
             "error": "Invalid username or password"
         }), 401
-
     if not check_password_hash(user["password"], password):
         return jsonify({
             "error": "Invalid username or password"
         }), 401
-
     session.clear()
     session["username"] = username
     session["role"] = user["role"]
-
     return jsonify({
         "message": "Login successful",
         "username": username,
         "role": user["role"]
     }), 200
-
-
 @app.route("/logout")
 def logout():
     session.clear()
-
     return redirect(url_for("home"))
-
-
 @app.route("/operator")
 @login_required("operator")
 def operator():
     return render_template("operator.html")
-
-
 @app.route("/admin")
 @login_required("admin")
 def admin():
     return render_template("analytics.html")
-
-
 @app.route("/api/pumps")
 @login_required("operator")
 def get_pumps():
     connection = get_connection()
-
     pumps = connection.execute("""
         SELECT pump_number, status, current_token
         FROM pumps
         ORDER BY pump_number
     """).fetchall()
-
     connection.close()
-
     return jsonify([
         {
             "pump_number": pump["pump_number"],
@@ -861,79 +687,60 @@ def get_pumps():
         }
         for pump in pumps
     ])
-
-
 @app.route("/api/admin/pumps", methods=["GET"])
 @login_required("admin")
 def get_admin_pumps():
     connection = get_connection()
-
     try:
         pumps = connection.execute("""
             SELECT pump_number, status, current_token
             FROM pumps
             ORDER BY pump_number
         """).fetchall()
-
         return jsonify([
             dict(pump) for pump in pumps
         ]), 200
-
     finally:
         connection.close()
-
 @app.route("/api/admin/pumps/<int:pump_number>/status", methods=["PUT"])
 @login_required("admin")
 def update_pump_status(pump_number):
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({"error": "Valid JSON data is required"}), 400
-
     new_status = data.get("status")
-
     if new_status not in ("AVAILABLE", "OUT_OF_SERVICE"):
         return jsonify({
             "error": "Status must be AVAILABLE or OUT_OF_SERVICE"
         }), 400
-
     connection = get_connection()
-
     try:
         pump = connection.execute(
             "SELECT pump_number, status, current_token FROM pumps WHERE pump_number = ?",
             (pump_number,)
         ).fetchone()
-
         if pump is None:
             return jsonify({"error": "Pump not found"}), 404
-
         if pump["status"] == "BUSY":
             return jsonify({
                 "error": "Cannot change a busy pump. Complete its refueling operation first."
             }), 409
-
         connection.execute(
             "UPDATE pumps SET status = ? WHERE pump_number = ?",
             (new_status, pump_number)
         )
         connection.commit()
-
         return jsonify({
             "message": f"Pump {pump_number} status updated successfully",
             "pump_number": pump_number,
             "status": new_status
         }), 200
-
     finally:
         connection.close()
-
-
 @app.route("/api/admin/maintenance", methods=["GET"])
 @login_required("admin")
 def get_maintenance_history():
     connection = get_connection()
-
     try:
         records = connection.execute("""
             SELECT
@@ -946,70 +753,52 @@ def get_maintenance_history():
             FROM maintenance_history
             ORDER BY created_at DESC, id DESC
         """).fetchall()
-
         return jsonify([dict(record) for record in records]), 200
-
     finally:
         connection.close()
-
-
 @app.route("/api/admin/maintenance", methods=["POST"])
 @login_required("admin")
 def create_maintenance_record():
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({"error": "Valid JSON data is required"}), 400
-
     pump_number = data.get("pump_number")
     issue_reason = data.get("issue_reason")
     maintenance_date = data.get("maintenance_date")
     service_notes = data.get("service_notes", "")
-
     if isinstance(pump_number, bool):
         return jsonify({"error": "pump_number must be a valid number"}), 400
-
     try:
         pump_number = int(pump_number)
     except (ValueError, TypeError):
         return jsonify({"error": "pump_number must be a valid number"}), 400
-
     if not all(isinstance(value, str) for value in [
         issue_reason, maintenance_date, service_notes
     ]):
         return jsonify({"error": "Issue, date, and service notes must be text"}), 400
-
     issue_reason = issue_reason.strip()
     maintenance_date = maintenance_date.strip()
     service_notes = service_notes.strip()
-
     if not issue_reason or not maintenance_date:
         return jsonify({
             "error": "pump_number, issue_reason, and maintenance_date are required"
         }), 400
-
     if len(issue_reason) > 200:
         return jsonify({"error": "Issue or reason must be 200 characters or fewer"}), 400
-
     if len(service_notes) > 2000:
         return jsonify({"error": "Service notes must be 2000 characters or fewer"}), 400
-
     try:
         datetime.strptime(maintenance_date, "%Y-%m-%d")
     except ValueError:
         return jsonify({"error": "maintenance_date must use YYYY-MM-DD format"}), 400
-
     connection = get_connection()
-
     try:
         pump = connection.execute(
             "SELECT pump_number FROM pumps WHERE pump_number = ?",
             (pump_number,)
         ).fetchone()
-
         if pump is None:
             return jsonify({"error": "Pump not found"}), 404
-
         created_at = datetime.now().isoformat(timespec="seconds")
         cursor = connection.execute("""
             INSERT INTO maintenance_history (
@@ -1028,7 +817,6 @@ def create_maintenance_record():
             created_at
         ))
         connection.commit()
-
         return jsonify({
             "message": "Maintenance record created successfully",
             "maintenance": {
@@ -1040,86 +828,61 @@ def create_maintenance_record():
                 "created_at": created_at
             }
         }), 201
-
     finally:
         connection.close()
-
-
-
 @app.route("/api/tokens", methods=["POST"])
 @customer_required
 def create_token():
-    data = request.get_json()
-
-    if not data:
-        return jsonify({
-            "error": "Request body is required"
-        }), 400
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Valid JSON data is required"}), 400
 
     vehicle_number = data.get("vehicle_number")
     fuel_type = data.get("fuel_type")
     amount = data.get("amount")
-
-    if not vehicle_number or not fuel_type or amount is None:
-        return jsonify({
-            "error": "vehicle_number, fuel_type and amount are required"
-        }), 400
-
+    if not isinstance(vehicle_number, str) or not vehicle_number.strip() or not fuel_type or amount is None:
+        return jsonify({"error": "vehicle_number, fuel_type and amount are required"}), 400
     try:
         amount = float(amount)
     except (ValueError, TypeError):
-        return jsonify({
-            "error": "Amount must be a valid number"
-        }), 400
-
+        return jsonify({"error": "Amount must be a valid number"}), 400
     if amount <= 0:
-        return jsonify({
-            "error": "Amount must be greater than zero"
-        }), 400
+        return jsonify({"error": "Amount must be greater than zero"}), 400
 
     vehicle_number = vehicle_number.strip().upper()
+    if not isinstance(fuel_type, str):
+        return jsonify({"error": "Fuel type must be PETROL or DIESEL"}), 400
     fuel_type = fuel_type.strip().upper()
-
-    allowed_fuel_types = ["PETROL", "DIESEL"]
-
-    if fuel_type not in allowed_fuel_types:
-        return jsonify({
-            "error": "Fuel type must be PETROL or DIESEL"
-        }), 400
+    if fuel_type not in ["PETROL", "DIESEL"]:
+        return jsonify({"error": "Fuel type must be PETROL or DIESEL"}), 400
 
     token_code = "FF-" + secrets.token_hex(4).upper()
-
-    created_at = datetime.now().isoformat(timespec="seconds")
-
+    now = datetime.now()
+    created_at = now.isoformat(timespec="seconds")
+    expires_at = (now + timedelta(hours=12)).isoformat(timespec="seconds")
     connection = get_connection()
-    connection.execute("""
-        INSERT OR IGNORE INTO customer_vehicles (customer_id, vehicle_number, created_at)
-        VALUES (?, ?, ?)
-    """, (session["customer_id"], vehicle_number, created_at))
-    connection.execute("""
-    INSERT INTO tokens (
-        token_code,
-        vehicle_number,
-        fuel_type,
-        amount,
-        pump_number,
-        status,
-        created_at,
-        customer_id
-    )
-    VALUES (?, ?, ?, ?, NULL, 'WAITING', ?, ?)
-""", (
-    token_code,
-    vehicle_number,
-    fuel_type,
-    amount,
-    created_at,
-    session["customer_id"]
-))
-
-
-    connection.commit()
-    connection.close()
+    try:
+        connection.execute("""
+            INSERT OR IGNORE INTO customer_vehicles (customer_id, vehicle_number, created_at)
+            VALUES (?, ?, ?)
+        """, (session["customer_id"], vehicle_number, created_at))
+        connection.execute("""
+            INSERT INTO tokens (
+                token_code, vehicle_number, fuel_type, amount,
+                pump_number, status, created_at, customer_id, expires_at
+            )
+            VALUES (?, ?, ?, ?, NULL, 'WAITING', ?, ?, ?)
+        """, (
+            token_code, vehicle_number, fuel_type, amount,
+            created_at, session["customer_id"], expires_at
+        ))
+        connection.commit()
+    except sqlite3.Error:
+        connection.rollback()
+        app.logger.exception("Could not create fuel token")
+        return jsonify({"error": "Unable to create token. Please try again."}), 500
+    finally:
+        connection.close()
 
     return jsonify({
         "message": "Fuel token created successfully",
@@ -1130,82 +893,75 @@ def create_token():
             "amount": amount,
             "pump_number": None,
             "status": "WAITING",
-            "created_at": created_at
+            "created_at": created_at,
+            "expires_at": expires_at
         }
     }), 201
-
 
 @app.route("/api/operator/scan", methods=["POST"])
 @login_required("operator")
 def operator_scan():
     data = request.get_json()
-
     if not data:
         return jsonify({
             "error": "Request body is required"
         }), 400
-
     token_code = data.get("token_code")
     pump_number = data.get("pump_number")
-
     if not token_code or pump_number is None:
         return jsonify({
             "error": "token_code and pump_number are required"
         }), 400
-
     token_code = token_code.strip().upper()
-
     try:
         pump_number = int(pump_number)
     except (ValueError, TypeError):
         return jsonify({
             "error": "pump_number must be a valid number"
         }), 400
-
     connection = get_connection()
-
     token = connection.execute("""
         SELECT *
         FROM tokens
         WHERE token_code = ?
     """, (token_code,)).fetchone()
-
     if token is None:
         connection.close()
-
         return jsonify({
             "error": "Token not found"
         }), 404
+    if token["status"] == "WAITING":
+        expire_waiting_tokens(connection)
+        token = connection.execute("""
+            SELECT * FROM tokens WHERE token_code = ?
+        """, (token_code,)).fetchone()
 
     if token["status"] != "WAITING":
+        connection.commit()
         connection.close()
-
+        if token["status"] == "EXPIRED":
+            return jsonify({
+                "error": "This token has expired. Tokens are valid for only 12 hours."
+            }), 400
         return jsonify({
             "error": f"Token cannot be scanned because its status is {token['status']}"
         }), 400
-
     pump = connection.execute("""
         SELECT *
         FROM pumps
         WHERE pump_number = ?
     """, (pump_number,)).fetchone()
-
     if pump is None:
         connection.close()
-
         return jsonify({
             "error": "Pump not found"
         }), 404
-
     if pump["status"] != "AVAILABLE":
         connection.close()
-
         return jsonify({
             "error": f"Pump {pump_number} is currently {pump['status']}"
         }), 400
-
     scanned_at = datetime.now().isoformat(timespec="seconds")
-
     connection.execute("""
         UPDATE tokens
         SET
@@ -1218,7 +974,6 @@ def operator_scan():
         scanned_at,
         token_code
     ))
-
     connection.execute("""
         UPDATE pumps
         SET
@@ -1229,10 +984,8 @@ def operator_scan():
         token_code,
         pump_number
     ))
-
     connection.commit()
     connection.close()
-
     return jsonify({
         "message": "Token verified and assigned to pump successfully",
         "token": {
@@ -1245,13 +998,10 @@ def operator_scan():
             "scanned_at": scanned_at
         }
     }), 200
-
-
 @app.route("/api/tokens/<token_code>", methods=["GET"])
 @login_required("operator")
 def get_token(token_code):
     connection = get_connection()
-
     token = connection.execute("""
         SELECT
             token_code,
@@ -1261,19 +1011,17 @@ def get_token(token_code):
             pump_number,
             status,
             created_at,
+            expires_at,
             scanned_at,
             completed_at
         FROM tokens
         WHERE token_code = ?
     """, (token_code.upper(),)).fetchone()
-
     connection.close()
-
     if token is None:
         return jsonify({
             "error": "Token not found"
         }), 404
-
     return jsonify({
         "token_code": token["token_code"],
         "vehicle_number": token["vehicle_number"],
@@ -1282,63 +1030,47 @@ def get_token(token_code):
         "pump_number": token["pump_number"],
         "status": token["status"],
         "created_at": token["created_at"],
+        "expires_at": token["expires_at"],
         "scanned_at": token["scanned_at"],
         "completed_at": token["completed_at"]
     })
-
-
 @app.route("/api/operator/complete", methods=["POST"])
 @login_required("operator")
 def complete_refueling():
     data = request.get_json()
-
     if not data:
         return jsonify({
             "error": "Request body is required"
         }), 400
-
     token_code = data.get("token_code")
-
     if not token_code:
         return jsonify({
             "error": "token_code is required"
         }), 400
-
     token_code = token_code.strip().upper()
-
     connection = get_connection()
-
     token = connection.execute("""
         SELECT *
         FROM tokens
         WHERE token_code = ?
     """, (token_code,)).fetchone()
-
     if token is None:
         connection.close()
-
         return jsonify({
             "error": "Token not found"
         }), 404
-
     if token["status"] != "AUTHORIZED":
         connection.close()
-
         return jsonify({
             "error": f"Refueling cannot be completed because token status is {token['status']}"
         }), 400
-
     pump_number = token["pump_number"]
-
     if pump_number is None:
         connection.close()
-
         return jsonify({
             "error": "Token is not assigned to a pump"
         }), 400
-
     completed_at = datetime.now().isoformat(timespec="seconds")
-
     connection.execute("""
         INSERT INTO transactions (
             token_code,
@@ -1359,18 +1091,16 @@ def complete_refueling():
         token["scanned_at"],
         completed_at
     ))
-
     connection.execute("""
         UPDATE tokens
         SET
-            status = 'EXPIRED',
+            status = 'USED',
             completed_at = ?
         WHERE token_code = ?
     """, (
         completed_at,
         token_code
     ))
-
     connection.execute("""
         UPDATE pumps
         SET
@@ -1378,12 +1108,10 @@ def complete_refueling():
             current_token = NULL
         WHERE pump_number = ?
     """, (pump_number,))
-
     connection.commit()
     connection.close()
-
     return jsonify({
-        "message": "Refueling completed successfully. Token expired and pump is available.",
+        "message": "Refueling completed successfully. Token used and pump is available.",
         "transaction": {
             "token_code": token["token_code"],
             "vehicle_number": token["vehicle_number"],
@@ -1392,17 +1120,14 @@ def complete_refueling():
             "pump_number": pump_number,
             "started_at": token["scanned_at"],
             "completed_at": completed_at,
-            "token_status": "EXPIRED",
+            "token_status": "USED",
             "pump_status": "AVAILABLE"
         }
     }), 200
-
-
 @app.route("/api/transactions", methods=["GET"])
 @login_required("admin")
 def get_transactions():
     connection = get_connection()
-
     transactions = connection.execute("""
         SELECT
             id,
@@ -1416,23 +1141,17 @@ def get_transactions():
         FROM transactions
         ORDER BY id DESC
     """).fetchall()
-
     connection.close()
-
     return jsonify([
         dict(transaction)
         for transaction in transactions
     ]), 200
-
-
-
 @app.route("/api/transactions/export", methods=["GET"])
 @login_required("admin")
 def export_transactions_csv():
     """Download transaction records as a date-filtered CSV report."""
     start_date = request.args.get("start_date", "").strip()
     end_date = request.args.get("end_date", "").strip()
-
     try:
         for date_value in (start_date, end_date):
             if date_value:
@@ -1441,30 +1160,23 @@ def export_transactions_csv():
         return jsonify({
             "error": "Dates must use YYYY-MM-DD format"
         }), 400
-
     if start_date and end_date and start_date > end_date:
         return jsonify({
             "error": "Start date cannot be after end date"
         }), 400
-
     conditions = []
     parameters = []
-
     if start_date:
         conditions.append("completed_at >= ?")
         parameters.append(start_date)
-
     if end_date:
         conditions.append("completed_at < date(?, '+1 day')")
         parameters.append(end_date)
-
     where_clause = (
         "WHERE " + " AND ".join(conditions)
         if conditions else ""
     )
-
     connection = get_connection()
-
     try:
         transactions = connection.execute(
             f"""
@@ -1485,10 +1197,8 @@ def export_transactions_csv():
         ).fetchall()
     finally:
         connection.close()
-
     output = io.StringIO(newline="")
     writer = csv.writer(output)
-
     writer.writerow([
         "Transaction ID",
         "Token Code",
@@ -1499,19 +1209,14 @@ def export_transactions_csv():
         "Started At",
         "Completed At"
     ])
-
     def safe_csv_text(value):
         if value is None:
             return ""
-
         text_value = str(value)
-
         # Protect spreadsheet users from formula injection.
         if text_value.startswith(("=", "+", "-", "@", "\t", "\r")):
             return "'" + text_value
-
         return text_value
-
     for transaction in transactions:
         writer.writerow([
             transaction["id"],
@@ -1523,19 +1228,15 @@ def export_transactions_csv():
             safe_csv_text(transaction["started_at"]),
             safe_csv_text(transaction["completed_at"])
         ])
-
     date_suffix = ""
-
     if start_date or end_date:
         date_suffix = (
             "_" + (start_date or "start")
             + "_to_" + (end_date or "today")
         )
-
     filename = "fuelflow_transactions" + date_suffix + ".csv"
     csv_content = "\ufeff" + output.getvalue()
     output.close()
-
     return Response(
         csv_content,
         mimetype="text/csv; charset=utf-8",
@@ -1543,15 +1244,11 @@ def export_transactions_csv():
             "Content-Disposition": f'attachment; filename="{filename}"'
         }
     )
-
-
 @app.route("/api/analytics", methods=["GET"])
 @login_required("admin")
-
 def get_analytics():
     start_date = request.args.get("start_date", "").strip()
     end_date = request.args.get("end_date", "").strip()
-
     try:
         for date_value in (start_date, end_date):
             if date_value:
@@ -1560,41 +1257,32 @@ def get_analytics():
         return jsonify({
             "error": "Dates must use YYYY-MM-DD format"
         }), 400
-
     if start_date and end_date and start_date > end_date:
         return jsonify({
             "error": "Start date cannot be after end date"
         }), 400
-
     conditions = []
     parameters = []
-
     if start_date:
         conditions.append("completed_at >= ?")
         parameters.append(start_date)
-
     if end_date:
         conditions.append("completed_at < date(?, '+1 day')")
         parameters.append(end_date)
-
     where_clause = (
         "WHERE " + " AND ".join(conditions)
         if conditions else ""
     )
-
     connection = get_connection()
-
     try:
         total_transactions = connection.execute(
             f"SELECT COUNT(*) AS total FROM transactions {where_clause}",
             parameters
         ).fetchone()["total"]
-
         total_revenue = connection.execute(
             f"SELECT COALESCE(SUM(amount), 0) AS total FROM transactions {where_clause}",
             parameters
         ).fetchone()["total"]
-
         petrol_sales = connection.execute(
             f"""
             SELECT COALESCE(SUM(amount), 0) AS total
@@ -1604,7 +1292,6 @@ def get_analytics():
             """,
             parameters
         ).fetchone()["total"]
-
         diesel_sales = connection.execute(
             f"""
             SELECT COALESCE(SUM(amount), 0) AS total
@@ -1614,7 +1301,6 @@ def get_analytics():
             """,
             parameters
         ).fetchone()["total"]
-
         pump_usage = connection.execute(
             f"""
             SELECT
@@ -1628,7 +1314,6 @@ def get_analytics():
             """,
             parameters
         ).fetchall()
-
         return jsonify({
             "total_transactions": total_transactions,
             "total_revenue": total_revenue,
@@ -1638,11 +1323,7 @@ def get_analytics():
             "start_date": start_date or None,
             "end_date": end_date or None
         }), 200
-
     finally:
         connection.close()
-
-
-
 if __name__ == "__main__":
     app.run(debug=True)
