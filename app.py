@@ -22,6 +22,11 @@ import base64
 import urllib.parse
 import urllib.request
 import urllib.error
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 app = Flask(__name__)
 app.secret_key = os.environ.get(
     "SECRET_KEY",
@@ -524,6 +529,7 @@ def get_customer_transactions():
                 t.expires_at,
                 t.scanned_at,
                 t.completed_at,
+                tr.id AS transaction_id,
                 tr.started_at,
                 tr.completed_at AS transaction_completed_at
             FROM tokens AS t
@@ -536,6 +542,115 @@ def get_customer_transactions():
         return jsonify([dict(transaction) for transaction in transactions]), 200
     finally:
         connection.close()
+
+@app.route("/api/customer/transactions/<int:transaction_id>/receipt", methods=["GET"])
+@customer_required
+def download_customer_receipt(transaction_id):
+    """Create a PDF receipt for a completed transaction owned by this customer."""
+    connection = get_connection()
+    try:
+        transaction = connection.execute("""
+            SELECT
+                tr.id AS transaction_id,
+                tr.token_code,
+                tr.vehicle_number,
+                tr.fuel_type,
+                tr.amount,
+                tr.pump_number,
+                tr.started_at,
+                tr.completed_at
+            FROM transactions AS tr
+            INNER JOIN tokens AS t ON t.token_code = tr.token_code
+            WHERE tr.id = ?
+              AND t.customer_id = ?
+              AND t.status = 'USED'
+        """, (transaction_id, session["customer_id"])).fetchone()
+    finally:
+        connection.close()
+
+    if transaction is None:
+        return jsonify({"error": "Completed transaction not found."}), 404
+
+    def format_receipt_date(value):
+        if not value:
+            return "-"
+        try:
+            return datetime.fromisoformat(value).strftime("%d %b %Y, %I:%M:%S %p")
+        except (TypeError, ValueError):
+            return str(value)
+
+    pdf_buffer = io.BytesIO()
+    document = SimpleDocTemplate(
+        pdf_buffer,
+        pagesize=A4,
+        rightMargin=20 * mm,
+        leftMargin=20 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm,
+        title=f"FuelFlow Pro Receipt {transaction_id}",
+        author="FuelFlow Pro"
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "FuelFlowTitle",
+        parent=styles["Title"],
+        textColor=colors.HexColor("#123B5D"),
+        fontSize=20,
+        spaceAfter=6
+    )
+    subtitle_style = ParagraphStyle(
+        "FuelFlowSubtitle",
+        parent=styles["Normal"],
+        textColor=colors.HexColor("#526579"),
+        alignment=1,
+        fontSize=9
+    )
+    story = [
+        Paragraph("FuelFlow Pro", title_style),
+        Paragraph("FUEL TRANSACTION RECEIPT", subtitle_style),
+        Spacer(1, 12 * mm)
+    ]
+    receipt_rows = [
+        ["Receipt / Transaction ID", str(transaction["transaction_id"])],
+        ["Token Code", str(transaction["token_code"] or "-")],
+        ["Vehicle Number", str(transaction["vehicle_number"] or "-")],
+        ["Fuel Type", str(transaction["fuel_type"] or "-")],
+        ["Amount Paid", "INR {:,.2f}".format(float(transaction["amount"] or 0))],
+        ["Pump Number", str(transaction["pump_number"] or "-")],
+        ["Refueling Started", format_receipt_date(transaction["started_at"])],
+        ["Refueling Completed", format_receipt_date(transaction["completed_at"])],
+        ["Payment / Token Status", "COMPLETED"],
+    ]
+    receipt_table = Table(receipt_rows, colWidths=[55 * mm, 105 * mm], hAlign="LEFT")
+    receipt_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#EAF1F7")),
+        ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#123B5D")),
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("LEADING", (0, 0), (-1, -1), 13),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D5DEE7")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 9),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 9),
+        ("TOPPADDING", (0, 0), (-1, -1), 9),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
+    ]))
+    story.extend([
+        receipt_table,
+        Spacer(1, 12 * mm),
+        Paragraph("Thank you for choosing FuelFlow Pro.", styles["Normal"]),
+        Spacer(1, 3 * mm),
+        Paragraph("This is a computer-generated receipt.", styles["Italic"])
+    ])
+    document.build(story)
+    pdf_buffer.seek(0)
+    return Response(
+        pdf_buffer.getvalue(),
+        mimetype="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="FuelFlow_Receipt_{transaction_id}.pdf"'
+        }
+    )
 
 @app.route("/api/customer/vehicles", methods=["GET", "POST"])
 @customer_required

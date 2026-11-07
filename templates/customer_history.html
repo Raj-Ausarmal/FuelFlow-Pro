@@ -1,10 +1,345 @@
+
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>History | FuelFlow Pro</title><link rel="stylesheet" href="{{ url_for('static', filename='customer.css') }}"></head>
-<body><div class="app-shell"><header class="topbar"><a class="brand" href="/customer-dashboard"><span class="brand-mark">⛽</span>FuelFlow Pro</a><div class="topbar-actions"><a class="icon-button" href="/customer-support" aria-label="Help">?</a><a class="icon-button" href="/customer-logout" aria-label="Logout">↪</a></div></header><main class="page"><p class="eyebrow">Your refueling record</p><h1>Transaction History</h1><p class="muted">Find your fuel tokens and completed refueling activity.</p><section class="section"><div class="filter-row"><input id="searchInput" type="search" placeholder="Search vehicle or token"><select id="statusFilter"><option value="">All statuses</option><option value="WAITING">Waiting</option><option value="AUTHORIZED">Authorized</option><option value="EXPIRED">Completed</option><option value="CANCELLED">Cancelled</option></select><input id="dateFilter" type="date" aria-label="Filter by date"></div><div id="historyList" class="history-list"></div></section></main><nav class="bottom-nav" aria-label="Customer navigation"><a href="/customer-dashboard"><span class="nav-icon">⌂</span>Home</a><a href="/customer-tokens"><span class="nav-icon">▦</span>Tokens</a><a class="active" href="/customer-history"><span class="nav-icon">◷</span>History</a><a href="/customer-profile"><span class="nav-icon">◉</span>Profile</a></nav></div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History | FuelFlow Pro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='customer.css') }}">
+    <style>
+        .receipt-download {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+            padding: 11px 17px;
+            border: none;
+            border-radius: 8px;
+            background: #123b32;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .receipt-download:hover {
+            background: #1b5949;
+        }
+
+        .receipt-download:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .receipt-note {
+            margin-top: 8px;
+            color: #64748b;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="app-shell">
+
+    <header class="topbar">
+        <a class="brand" href="/customer-dashboard">
+            <span class="brand-mark">⛽</span>
+            FuelFlow Pro
+        </a>
+
+        <div class="topbar-actions">
+            <a class="icon-button" href="/customer-support" aria-label="Help">?</a>
+            <a class="icon-button" href="/customer-logout" aria-label="Logout">↪</a>
+        </div>
+    </header>
+
+    <main class="page">
+        <p class="eyebrow">Your refueling record</p>
+        <h1>Transaction History</h1>
+        <p class="muted">
+            Find your fuel tokens and completed refueling activity.
+        </p>
+
+        <section class="section">
+            <div class="filter-row">
+                <input
+                    id="searchInput"
+                    type="search"
+                    placeholder="Search vehicle or token"
+                >
+
+                <select id="statusFilter">
+                    <option value="">All statuses</option>
+                    <option value="WAITING">Waiting</option>
+                    <option value="AUTHORIZED">Authorized</option>
+                    <option value="USED">Completed</option>
+                    <option value="EXPIRED">Expired</option>
+                    <option value="CANCELLED">Cancelled</option>
+                </select>
+
+                <input
+                    id="dateFilter"
+                    type="date"
+                    aria-label="Filter by date"
+                >
+            </div>
+
+            <div id="historyList" class="history-list"></div>
+        </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Customer navigation">
+        <a href="/customer-dashboard">
+            <span class="nav-icon">⌂</span>Home
+        </a>
+        <a href="/customer-tokens">
+            <span class="nav-icon">▦</span>Tokens
+        </a>
+        <a class="active" href="/customer-history">
+            <span class="nav-icon">◷</span>History
+        </a>
+        <a href="/customer-profile">
+            <span class="nav-icon">◉</span>Profile
+        </a>
+    </nav>
+
+</div>
+
 <script>
-let transactions=[];const list=document.getElementById("historyList");const money=value=>"₹"+Number(value||0).toLocaleString("en-IN",{maximumFractionDigits:2});const date=value=>{if(!value)return "—";const parsed=new Date(value);return Number.isNaN(parsed.getTime())?value:parsed.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});};function badge(status){const node=document.createElement("span");node.className="badge badge-"+String(status||"UNKNOWN").replace(/[^A-Z0-9_-]/g,"");node.textContent=status||"UNKNOWN";return node;}
-function receipt(item){const panel=document.createElement("div");panel.className="receipt-panel";panel.innerHTML="<h3>FuelFlow Pro Receipt</h3><p>Refueling completed successfully.</p><div class='receipt-grid'><div><small>Token</small><strong></strong></div><div><small>Fuel</small><strong></strong></div><div><small>Amount</small><strong></strong></div><div><small>Pump</small><strong></strong></div><div><small>Vehicle</small><strong></strong></div><div><small>Completed</small><strong></strong></div></div>";const values=[item.token_code,item.fuel_type,money(item.amount),item.pump_number?"Pump "+item.pump_number:"—",item.vehicle_number,date(item.transaction_completed_at||item.completed_at)];panel.querySelectorAll("strong").forEach((node,index)=>node.textContent=values[index]);return panel;}
-function render(){const query=searchInput.value.trim().toLowerCase(),status=statusFilter.value,selectedDate=dateFilter.value;const filtered=transactions.filter(item=>{const text=[item.token_code,item.vehicle_number,item.fuel_type].join(" ").toLowerCase();const timestamp=item.transaction_completed_at||item.completed_at||item.created_at;return(!query||text.includes(query))&&(!status||item.status===status)&&(!selectedDate||String(timestamp||"").slice(0,10)===selectedDate);});list.replaceChildren();if(!filtered.length){list.innerHTML='<div class="card empty-state"><div class="empty-icon">◌</div><h3>No matching activity</h3><p>Try a different search, or create a fuel token to get started.</p></div>';return;}filtered.forEach(item=>{const card=document.createElement("article"),head=document.createElement("div"),name=document.createElement("strong"),meta=document.createElement("div");card.className="card history-item";head.className="history-head";name.textContent=(item.fuel_type||"Fuel")+" · "+money(item.amount);head.append(name,badge(item.status));meta.className="history-meta";["Token "+(item.token_code||"—"),item.vehicle_number||"Vehicle pending",item.pump_number?"Pump "+item.pump_number:"Pump pending",date(item.transaction_completed_at||item.completed_at||item.created_at)].forEach(value=>{const span=document.createElement("span");span.textContent=value;meta.appendChild(span);});card.append(head,meta);if(["EXPIRED","COMPLETED"].includes(item.status)){const button=document.createElement("button");button.className="text-button";button.textContent="View receipt";button.onclick=()=>{const existing=card.querySelector(".receipt-panel");if(existing){existing.remove();button.textContent="View receipt";}else{card.appendChild(receipt(item));button.textContent="Hide receipt";}};card.appendChild(button);}list.appendChild(card);});}
-async function load(){list.innerHTML='<div class="card empty-state"><div class="empty-icon">◌</div><p>Loading your history…</p></div>';try{const response=await fetch("/api/customer/transactions");if(response.status===401){window.location.href="/customer-login";return;}const data=await response.json();if(!response.ok)throw new Error();transactions=Array.isArray(data)?data:[];render();}catch(error){list.innerHTML='<div class="card empty-state"><div class="empty-icon">!</div><p>Could not load your history. Please refresh and try again.</p></div>';}}
-searchInput.oninput=render;statusFilter.onchange=render;dateFilter.onchange=render;load();
-</script></body></html>
+let transactions = [];
+
+const list = document.getElementById("historyList");
+const searchInput = document.getElementById("searchInput");
+const statusFilter = document.getElementById("statusFilter");
+const dateFilter = document.getElementById("dateFilter");
+
+const money = value =>
+    "₹" + Number(value || 0).toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
+function date(value) {
+    if (!value) return "—";
+
+    const parsed = new Date(value);
+
+    return Number.isNaN(parsed.getTime())
+        ? value
+        : parsed.toLocaleString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+}
+
+function badge(status) {
+    const node = document.createElement("span");
+
+    node.className =
+        "badge badge-" +
+        String(status || "UNKNOWN").replace(/[^A-Z0-9_-]/g, "");
+
+    node.textContent = status || "UNKNOWN";
+
+    return node;
+}
+
+function createReceiptButton(item) {
+    const button = document.createElement("button");
+
+    button.className = "receipt-download";
+    button.textContent = "↓ Download PDF Receipt";
+
+    button.onclick = async () => {
+        if (!item.transaction_id) {
+            alert("Transaction ID is unavailable.");
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = "Preparing receipt...";
+
+        try {
+            const response = await fetch(
+                `/api/customer/transactions/${item.transaction_id}/receipt`
+            );
+
+            if (response.status === 401) {
+                window.location.href = "/customer-login";
+                return;
+            }
+
+            if (!response.ok) {
+                let message = "Unable to generate receipt.";
+
+                try {
+                    const data = await response.json();
+                    message = data.error || message;
+                } catch (_) {}
+
+                throw new Error(message);
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = url;
+            link.download =
+                `FuelFlow_Receipt_${item.transaction_id}.pdf`;
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            URL.revokeObjectURL(url);
+
+            button.textContent = "↓ Download PDF Receipt";
+
+        } catch (error) {
+            alert(error.message);
+
+            button.textContent = "↓ Download PDF Receipt";
+
+        } finally {
+            button.disabled = false;
+        }
+    };
+
+    return button;
+}
+
+function render() {
+    const query = searchInput.value.trim().toLowerCase();
+    const status = statusFilter.value;
+    const selectedDate = dateFilter.value;
+
+    const filtered = transactions.filter(item => {
+        const text = [
+            item.token_code,
+            item.vehicle_number,
+            item.fuel_type
+        ].join(" ").toLowerCase();
+
+        const timestamp =
+            item.transaction_completed_at ||
+            item.completed_at ||
+            item.created_at;
+
+        return (
+            (!query || text.includes(query)) &&
+            (!status || item.status === status) &&
+            (
+                !selectedDate ||
+                String(timestamp || "").slice(0, 10) === selectedDate
+            )
+        );
+    });
+
+    list.replaceChildren();
+
+    if (!filtered.length) {
+        list.innerHTML = `
+            <div class="card empty-state">
+                <div class="empty-icon">◌</div>
+                <h3>No matching activity</h3>
+                <p>
+                    Try a different search, or create a fuel token
+                    to get started.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    filtered.forEach(item => {
+        const card = document.createElement("article");
+        const head = document.createElement("div");
+        const name = document.createElement("strong");
+        const meta = document.createElement("div");
+
+        card.className = "card history-item";
+        head.className = "history-head";
+
+        name.textContent =
+            (item.fuel_type || "Fuel") + " · " + money(item.amount);
+
+        head.append(name, badge(item.status));
+
+        meta.className = "history-meta";
+
+        [
+            "Transaction #" + (item.transaction_id || "—"),
+            "Token " + (item.token_code || "—"),
+            item.vehicle_number || "Vehicle pending",
+            item.pump_number ? "Pump " + item.pump_number : "Pump pending",
+            date(item.transaction_completed_at || item.completed_at || item.created_at)
+        ].forEach(value => {
+            const span = document.createElement("span");
+            span.textContent = value;
+            meta.appendChild(span);
+        });
+
+        card.append(head, meta);
+
+        if (item.status === "USED" && item.transaction_id) {
+            card.appendChild(createReceiptButton(item));
+
+            const note = document.createElement("p");
+            note.className = "receipt-note";
+            note.textContent = "Download your completed transaction receipt.";
+            card.appendChild(note);
+        }
+
+        list.appendChild(card);
+    });
+}
+
+async function load() {
+    list.innerHTML = `
+        <div class="card empty-state">
+            <div class="empty-icon">◌</div>
+            <p>Loading your history...</p>
+        </div>
+    `;
+
+    try {
+        const response = await fetch("/api/customer/transactions");
+
+        if (response.status === 401) {
+            window.location.href = "/customer-login";
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Unable to load history.");
+        }
+
+        transactions = Array.isArray(data) ? data : [];
+
+        render();
+
+    } catch (error) {
+        list.innerHTML = `
+            <div class="card empty-state">
+                <div class="empty-icon">!</div>
+                <p>Could not load your history. Please refresh and try again.</p>
+            </div>
+        `;
+    }
+}
+
+searchInput.addEventListener("input", render);
+statusFilter.addEventListener("change", render);
+dateFilter.addEventListener("change", render);
+
+load();
+</script>
+
+</body>
+</html>
