@@ -6,7 +6,105 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>History | FuelFlow Pro</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='customer.css') }}">
+
     <style>
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin: 24px 0;
+        }
+
+        .summary-card {
+            padding: 18px;
+            border-radius: 12px;
+            background: white;
+            border: 1px solid #e2e8f0;
+        }
+
+        .summary-label {
+            display: block;
+            color: #64748b;
+            font-size: 12px;
+            margin-bottom: 9px;
+        }
+
+        .summary-value {
+            font-size: 21px;
+            font-weight: 700;
+            color: #123b32;
+            overflow-wrap: anywhere;
+        }
+
+        .filter-panel {
+            background: white;
+            padding: 18px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .filter-row input,
+        .filter-row select {
+            width: 100%;
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .quick-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .quick-filter {
+            padding: 9px 13px;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            background: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .quick-filter.active {
+            background: #123b32;
+            border-color: #123b32;
+            color: white;
+        }
+
+        .filter-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .clear-filter {
+            border: none;
+            background: transparent;
+            color: #123b32;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .results-count {
+            color: #64748b;
+            font-size: 13px;
+            margin: 12px 0;
+        }
+
         .receipt-download {
             display: inline-flex;
             align-items: center;
@@ -35,6 +133,33 @@
             color: #64748b;
             font-size: 12px;
         }
+
+        .history-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .history-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        @media (max-width: 600px) {
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 
@@ -54,21 +179,49 @@
     </header>
 
     <main class="page">
+
         <p class="eyebrow">Your refueling record</p>
         <h1>Transaction History</h1>
+
         <p class="muted">
-            Find your fuel tokens and completed refueling activity.
+            Track your fuel purchases, spending and transaction receipts.
         </p>
 
-        <section class="section">
+        <!-- Monthly summary -->
+        <section class="summary-grid">
+
+            <article class="summary-card">
+                <span class="summary-label">This Month's Spending</span>
+                <div class="summary-value" id="monthlySpending">₹0.00</div>
+            </article>
+
+            <article class="summary-card">
+                <span class="summary-label">Completed Transactions</span>
+                <div class="summary-value" id="monthlyTransactions">0</div>
+            </article>
+
+            <article class="summary-card">
+                <span class="summary-label">Total Completed Spending</span>
+                <div class="summary-value" id="totalSpending">₹0.00</div>
+            </article>
+
+        </section>
+
+        <!-- Filters -->
+        <section class="filter-panel">
+
+            <h3>Search and Filter</h3>
+
             <div class="filter-row">
+
                 <input
                     id="searchInput"
                     type="search"
-                    placeholder="Search vehicle or token"
+                    placeholder="Search vehicle, token or fuel type"
+                    aria-label="Search transactions"
                 >
 
-                <select id="statusFilter">
+                <select id="statusFilter" aria-label="Filter by status">
                     <option value="">All statuses</option>
                     <option value="WAITING">Waiting</option>
                     <option value="AUTHORIZED">Authorized</option>
@@ -77,47 +230,152 @@
                     <option value="CANCELLED">Cancelled</option>
                 </select>
 
-                <input
-                    id="dateFilter"
-                    type="date"
-                    aria-label="Filter by date"
-                >
             </div>
 
-            <div id="historyList" class="history-list"></div>
+            <div class="quick-filters">
+                <button class="quick-filter active" data-period="all">All time</button>
+                <button class="quick-filter" data-period="today">Today</button>
+                <button class="quick-filter" data-period="7days">Last 7 days</button>
+                <button class="quick-filter" data-period="month">This month</button>
+                <button class="quick-filter" data-period="custom">Custom range</button>
+            </div>
+
+            <div class="filter-row" id="customDateRange" hidden>
+
+                <input
+                    id="startDate"
+                    type="date"
+                    aria-label="Start date"
+                >
+
+                <input
+                    id="endDate"
+                    type="date"
+                    aria-label="End date"
+                >
+
+            </div>
+
+            <div class="filter-actions">
+
+                <span class="muted" id="dateRangeLabel">
+                    Showing all transactions
+                </span>
+
+                <button class="clear-filter" id="clearFilters">
+                    Clear filters
+                </button>
+
+            </div>
+
         </section>
+
+        <section class="section">
+
+            <h3>Transactions</h3>
+
+            <p class="results-count" id="resultsCount">
+                Loading transactions...
+            </p>
+
+            <div id="historyList" class="history-list"></div>
+
+        </section>
+
     </main>
 
     <nav class="bottom-nav" aria-label="Customer navigation">
+
         <a href="/customer-dashboard">
             <span class="nav-icon">⌂</span>Home
         </a>
+
         <a href="/customer-tokens">
             <span class="nav-icon">▦</span>Tokens
         </a>
+
         <a class="active" href="/customer-history">
             <span class="nav-icon">◷</span>History
         </a>
+
         <a href="/customer-profile">
             <span class="nav-icon">◉</span>Profile
         </a>
+
     </nav>
 
 </div>
 
 <script>
 let transactions = [];
+let selectedPeriod = "all";
 
 const list = document.getElementById("historyList");
 const searchInput = document.getElementById("searchInput");
 const statusFilter = document.getElementById("statusFilter");
-const dateFilter = document.getElementById("dateFilter");
+const startDate = document.getElementById("startDate");
+const endDate = document.getElementById("endDate");
+const customDateRange = document.getElementById("customDateRange");
+const resultsCount = document.getElementById("resultsCount");
+const dateRangeLabel = document.getElementById("dateRangeLabel");
 
 const money = value =>
     "₹" + Number(value || 0).toLocaleString("en-IN", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
+
+function getLocalDateString(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+function getTransactionDate(item) {
+    return String(
+        item.transaction_completed_at ||
+        item.completed_at ||
+        item.created_at ||
+        ""
+    ).slice(0, 10);
+}
+
+function getCompletedTransactions() {
+    return transactions.filter(item =>
+        item.status === "USED" && item.transaction_completed_at
+    );
+}
+
+function updateSummary() {
+    const completed = getCompletedTransactions();
+
+    const currentMonth = getLocalDateString().slice(0, 7);
+
+    const monthly = completed.filter(item =>
+        String(item.transaction_completed_at).slice(0, 7) === currentMonth
+    );
+
+    const monthlyAmount = monthly.reduce(
+        (total, item) => total + Number(item.amount || 0),
+        0
+    );
+
+    const totalAmount = completed.reduce(
+        (total, item) => total + Number(item.amount || 0),
+        0
+    );
+
+    document.getElementById("monthlySpending").textContent =
+        money(monthlyAmount);
+
+    document.getElementById("monthlyTransactions").textContent =
+        monthly.length;
+
+    document.getElementById("totalSpending").textContent =
+        money(totalAmount);
+}
 
 function date(value) {
     if (!value) return "—";
@@ -195,63 +453,114 @@ function createReceiptButton(item) {
             link.click();
             link.remove();
 
-            URL.revokeObjectURL(url);
-
-            button.textContent = "↓ Download PDF Receipt";
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
 
         } catch (error) {
             alert(error.message);
 
-            button.textContent = "↓ Download PDF Receipt";
-
         } finally {
             button.disabled = false;
+            button.textContent = "↓ Download PDF Receipt";
         }
     };
 
     return button;
 }
 
+function matchesDatePeriod(item) {
+    const transactionDate = getTransactionDate(item);
+    const today = getLocalDateString();
+
+    if (!transactionDate) return false;
+
+    if (selectedPeriod === "all") return true;
+
+    if (selectedPeriod === "today") {
+        return transactionDate === today;
+    }
+
+    if (selectedPeriod === "7days") {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 6);
+
+        return transactionDate >= getLocalDateString(cutoff)
+            && transactionDate <= today;
+    }
+
+    if (selectedPeriod === "month") {
+        return transactionDate.slice(0, 7) === today.slice(0, 7);
+    }
+
+    if (selectedPeriod === "custom") {
+        if (startDate.value && transactionDate < startDate.value) {
+            return false;
+        }
+
+        if (endDate.value && transactionDate > endDate.value) {
+            return false;
+        }
+
+        return true;
+    }
+
+    return true;
+}
+
 function render() {
     const query = searchInput.value.trim().toLowerCase();
     const status = statusFilter.value;
-    const selectedDate = dateFilter.value;
 
     const filtered = transactions.filter(item => {
-        const text = [
+        const searchableText = [
             item.token_code,
             item.vehicle_number,
             item.fuel_type
         ].join(" ").toLowerCase();
 
-        const timestamp =
-            item.transaction_completed_at ||
-            item.completed_at ||
-            item.created_at;
-
         return (
-            (!query || text.includes(query)) &&
+            (!query || searchableText.includes(query)) &&
             (!status || item.status === status) &&
-            (
-                !selectedDate ||
-                String(timestamp || "").slice(0, 10) === selectedDate
-            )
+            matchesDatePeriod(item)
         );
+    });
+
+    filtered.sort((a, b) => {
+        return getTransactionDate(b).localeCompare(getTransactionDate(a));
     });
 
     list.replaceChildren();
 
+    resultsCount.textContent =
+        `Showing ${filtered.length} of ${transactions.length} transactions`;
+
+    if (selectedPeriod === "custom") {
+        dateRangeLabel.textContent =
+            `${startDate.value || "Any start"} to ${endDate.value || "Any end"}`;
+    } else {
+        const labels = {
+            all: "Showing all transactions",
+            today: "Showing today's transactions",
+            "7days": "Showing the last 7 days",
+            month: "Showing this month's transactions"
+        };
+
+        dateRangeLabel.textContent = labels[selectedPeriod] || "";
+    }
+
     if (!filtered.length) {
-        list.innerHTML = `
-            <div class="card empty-state">
-                <div class="empty-icon">◌</div>
-                <h3>No matching activity</h3>
-                <p>
-                    Try a different search, or create a fuel token
-                    to get started.
-                </p>
-            </div>
-        `;
+        const empty = document.createElement("div");
+        empty.className = "card empty-state";
+
+        const heading = document.createElement("h3");
+        heading.textContent = "No matching activity";
+
+        const message = document.createElement("p");
+        message.textContent =
+            "Try changing your filters or search terms.";
+
+        empty.append(heading, message);
+        list.appendChild(empty);
+
         return;
     }
 
@@ -276,7 +585,11 @@ function render() {
             "Token " + (item.token_code || "—"),
             item.vehicle_number || "Vehicle pending",
             item.pump_number ? "Pump " + item.pump_number : "Pump pending",
-            date(item.transaction_completed_at || item.completed_at || item.created_at)
+            date(
+                item.transaction_completed_at ||
+                item.completed_at ||
+                item.created_at
+            )
         ].forEach(value => {
             const span = document.createElement("span");
             span.textContent = value;
@@ -290,7 +603,9 @@ function render() {
 
             const note = document.createElement("p");
             note.className = "receipt-note";
-            note.textContent = "Download your completed transaction receipt.";
+            note.textContent =
+                "Download your completed transaction receipt.";
+
             card.appendChild(note);
         }
 
@@ -298,10 +613,24 @@ function render() {
     });
 }
 
+function setPeriod(period) {
+    selectedPeriod = period;
+
+    document.querySelectorAll(".quick-filter").forEach(button => {
+        button.classList.toggle(
+            "active",
+            button.dataset.period === period
+        );
+    });
+
+    customDateRange.hidden = period !== "custom";
+
+    render();
+}
+
 async function load() {
     list.innerHTML = `
         <div class="card empty-state">
-            <div class="empty-icon">◌</div>
             <p>Loading your history...</p>
         </div>
     `;
@@ -322,12 +651,12 @@ async function load() {
 
         transactions = Array.isArray(data) ? data : [];
 
+        updateSummary();
         render();
 
     } catch (error) {
         list.innerHTML = `
             <div class="card empty-state">
-                <div class="empty-icon">!</div>
                 <p>Could not load your history. Please refresh and try again.</p>
             </div>
         `;
@@ -336,7 +665,23 @@ async function load() {
 
 searchInput.addEventListener("input", render);
 statusFilter.addEventListener("change", render);
-dateFilter.addEventListener("change", render);
+startDate.addEventListener("change", render);
+endDate.addEventListener("change", render);
+
+document.querySelectorAll(".quick-filter").forEach(button => {
+    button.addEventListener("click", () => {
+        setPeriod(button.dataset.period);
+    });
+});
+
+document.getElementById("clearFilters").addEventListener("click", () => {
+    searchInput.value = "";
+    statusFilter.value = "";
+    startDate.value = "";
+    endDate.value = "";
+
+    setPeriod("all");
+});
 
 load();
 </script>
