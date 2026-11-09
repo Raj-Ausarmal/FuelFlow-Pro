@@ -61,6 +61,11 @@
             background: white;
         }
 
+        /* Keep calendar hidden unless All time is selected. */
+        #customDateRange[hidden] {
+            display: none !important;
+        }
+
         .quick-filters {
             display: flex;
             flex-wrap: wrap;
@@ -187,7 +192,6 @@
             Track your fuel purchases, spending and transaction receipts.
         </p>
 
-        <!-- Monthly summary -->
         <section class="summary-grid">
 
             <article class="summary-card">
@@ -207,7 +211,6 @@
 
         </section>
 
-        <!-- Filters -->
         <section class="filter-panel">
 
             <h3>Search and Filter</h3>
@@ -233,14 +236,14 @@
             </div>
 
             <div class="quick-filters">
-                <button class="quick-filter active" data-period="all">All time</button>
-                <button class="quick-filter" data-period="today">Today</button>
-                <button class="quick-filter" data-period="7days">Last 7 days</button>
-                <button class="quick-filter" data-period="month">This month</button>
-                <button class="quick-filter" data-period="custom">Custom range</button>
+                <button type="button" class="quick-filter active" data-period="all">All time</button>
+                <button type="button" class="quick-filter" data-period="today">Today</button>
+                <button type="button" class="quick-filter" data-period="7days">Last 7 days</button>
+                <button type="button" class="quick-filter" data-period="month">This month</button>
             </div>
 
-            <div class="filter-row" id="customDateRange" hidden>
+            <!-- Only visible when All time is selected -->
+            <div class="filter-row" id="customDateRange">
 
                 <input
                     id="startDate"
@@ -262,7 +265,7 @@
                     Showing all transactions
                 </span>
 
-                <button class="clear-filter" id="clearFilters">
+                <button type="button" class="clear-filter" id="clearFilters">
                     Clear filters
                 </button>
 
@@ -325,10 +328,10 @@ const money = value =>
         maximumFractionDigits: 2
     });
 
-function getLocalDateString(date = new Date()) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
+function getLocalDateString(value = new Date()) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
 }
@@ -350,7 +353,6 @@ function getCompletedTransactions() {
 
 function updateSummary() {
     const completed = getCompletedTransactions();
-
     const currentMonth = getLocalDateString().slice(0, 7);
 
     const monthly = completed.filter(item =>
@@ -473,7 +475,17 @@ function matchesDatePeriod(item) {
 
     if (!transactionDate) return false;
 
-    if (selectedPeriod === "all") return true;
+    if (selectedPeriod === "all") {
+        if (startDate.value && transactionDate < startDate.value) {
+            return false;
+        }
+
+        if (endDate.value && transactionDate > endDate.value) {
+            return false;
+        }
+
+        return true;
+    }
 
     if (selectedPeriod === "today") {
         return transactionDate === today;
@@ -489,18 +501,6 @@ function matchesDatePeriod(item) {
 
     if (selectedPeriod === "month") {
         return transactionDate.slice(0, 7) === today.slice(0, 7);
-    }
-
-    if (selectedPeriod === "custom") {
-        if (startDate.value && transactionDate < startDate.value) {
-            return false;
-        }
-
-        if (endDate.value && transactionDate > endDate.value) {
-            return false;
-        }
-
-        return true;
     }
 
     return true;
@@ -524,21 +524,24 @@ function render() {
         );
     });
 
-    filtered.sort((a, b) => {
-        return getTransactionDate(b).localeCompare(getTransactionDate(a));
-    });
+    filtered.sort((a, b) =>
+        getTransactionDate(b).localeCompare(getTransactionDate(a))
+    );
 
     list.replaceChildren();
 
     resultsCount.textContent =
         `Showing ${filtered.length} of ${transactions.length} transactions`;
 
-    if (selectedPeriod === "custom") {
-        dateRangeLabel.textContent =
-            `${startDate.value || "Any start"} to ${endDate.value || "Any end"}`;
+    if (selectedPeriod === "all") {
+        if (startDate.value || endDate.value) {
+            dateRangeLabel.textContent =
+                `${startDate.value || "Any start"} to ${endDate.value || "Any end"}`;
+        } else {
+            dateRangeLabel.textContent = "Showing all transactions";
+        }
     } else {
         const labels = {
-            all: "Showing all transactions",
             today: "Showing today's transactions",
             "7days": "Showing the last 7 days",
             month: "Showing this month's transactions"
@@ -560,7 +563,6 @@ function render() {
 
         empty.append(heading, message);
         list.appendChild(empty);
-
         return;
     }
 
@@ -623,7 +625,8 @@ function setPeriod(period) {
         );
     });
 
-    customDateRange.hidden = period !== "custom";
+    // Date fields are visible ONLY for All time.
+    customDateRange.hidden = period !== "all";
 
     render();
 }
@@ -683,6 +686,8 @@ document.getElementById("clearFilters").addEventListener("click", () => {
     setPeriod("all");
 });
 
+// Set initial visibility and then load transactions.
+customDateRange.hidden = selectedPeriod !== "all";
 load();
 </script>
 
