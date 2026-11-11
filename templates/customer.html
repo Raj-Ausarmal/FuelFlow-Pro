@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,72 +8,371 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='customer.css') }}">
 </head>
 <body>
+
 <div class="app-shell">
+
     <header class="topbar">
-        <a class="brand" href="/customer-dashboard"><span class="brand-mark">⛽</span>FuelFlow Pro</a>
-        <div class="topbar-actions"><a class="icon-button" href="/customer-support" aria-label="Help and support">?</a><a class="icon-button" href="/customer-logout" aria-label="Logout">↪</a></div>
+        <a class="brand" href="/customer-dashboard">
+            <span class="brand-mark">⛽</span>
+            FuelFlow Pro
+        </a>
+
+        <div class="topbar-actions">
+            <a class="icon-button" href="/customer-support" aria-label="Help and support">?</a>
+            <a class="icon-button" href="/customer-logout" aria-label="Logout">↪</a>
+        </div>
     </header>
+
     <main class="page">
+
         <p class="eyebrow" id="greeting">Welcome back</p>
+
         <h1>Ready for your next journey?</h1>
         <p class="muted">Manage your fuel tokens in a few taps.</p>
+
+        <!-- Dashboard Overview -->
         <section class="section">
-            <div class="section-heading"><h2>My Overview</h2><a class="text-link" href="/customer-tokens">View Tokens</a></div>
+
+            <div class="section-heading">
+                <h2>My Overview</h2>
+                <a class="text-link" href="/customer-tokens">View Tokens</a>
+            </div>
+
             <div class="summary-grid" id="tokenSummary">
-                <div class="summary-card"><small>Total Tokens</small><strong>—</strong></div>
-                <div class="summary-card active"><small>Active</small><strong>—</strong></div>
-                <div class="summary-card done"><small>Completed</small><strong>—</strong></div>
+
+                <div class="summary-card">
+                    <small>Total Tokens</small>
+                    <strong>—</strong>
+                </div>
+
+                <div class="summary-card active">
+                    <small>Active</small>
+                    <strong>—</strong>
+                </div>
+
+                <div class="summary-card done">
+                    <small>Completed</small>
+                    <strong>—</strong>
+                </div>
+
             </div>
         </section>
-        <section class="section"><a class="card teal-action" href="/customer-tokens"><span class="action-icon">▦</span><span class="action-copy"><h2>My Fuel Tokens</h2><p>View your tokens and QR codes</p></span><span class="action-arrow">›</span></a></section>
-        <section class="section"><div class="quick-grid">
-            <a class="quick-card quick-tokens" href="/customer-tokens"><span class="quick-icon">▦</span><h3>My Tokens</h3><span>View token status</span></a>
-            <a class="quick-card quick-history" href="/customer-history"><span class="quick-icon">◷</span><h3>Transactions</h3><span>Previous refueling</span></a>
-            <a class="quick-card quick-profile" href="/customer-profile"><span class="quick-icon">◉</span><h3>My Profile</h3><span>Account & security</span></a>
-            <a class="quick-card quick-help" href="/customer-support"><span class="quick-icon">?</span><h3>Help & Support</h3><span>Answers and guidance</span></a>
-        </div></section>
-        <section class="section"><div class="section-heading"><h2>Recent Activity</h2><a class="text-link" href="/customer-history">View All</a></div><div id="recentActivity" class="activity-list"><div class="card empty-state"><div class="empty-icon">◌</div><p>Loading your recent activity…</p></div></div></section>
+
+        <!-- Main Fuel Token Action -->
+        <section class="section">
+
+            <a class="card teal-action" href="/customer-tokens">
+
+                <span class="action-icon">▦</span>
+
+                <span class="action-copy">
+                    <h2>My Fuel Tokens</h2>
+                    <p>View your tokens and QR codes</p>
+                </span>
+
+                <span class="action-arrow">›</span>
+
+            </a>
+
+        </section>
+
+        <!-- Quick Navigation -->
+        <section class="section">
+
+            <div class="quick-grid">
+
+                <a class="quick-card quick-tokens" href="/customer-tokens">
+                    <span class="quick-icon">▦</span>
+                    <h3>My Tokens</h3>
+                    <span>View token status</span>
+                </a>
+
+                <a class="quick-card quick-history" href="/customer-history">
+                    <span class="quick-icon">◷</span>
+                    <h3>Transactions</h3>
+                    <span>Previous refueling</span>
+                </a>
+
+                <a class="quick-card quick-profile" href="/customer-profile">
+                    <span class="quick-icon">◉</span>
+                    <h3>My Profile</h3>
+                    <span>Account & security</span>
+                </a>
+
+                <a class="quick-card quick-help" href="/customer-support">
+                    <span class="quick-icon">?</span>
+                    <h3>Help & Support</h3>
+                    <span>Answers and guidance</span>
+                </a>
+
+            </div>
+
+        </section>
+
+        <!-- Recent Activity -->
+        <section class="section">
+
+            <div class="section-heading">
+                <h2>Recent Activity</h2>
+                <a class="text-link" href="/customer-history">View All</a>
+            </div>
+
+            <div id="recentActivity" class="activity-list">
+
+                <div class="card empty-state">
+                    <div class="empty-icon">◌</div>
+                    <p>Loading your recent activity…</p>
+                </div>
+
+            </div>
+
+        </section>
+
     </main>
-    <nav class="bottom-nav" aria-label="Customer navigation"><a class="active" href="/customer-dashboard"><span class="nav-icon">⌂</span>Home</a><a href="/customer-tokens"><span class="nav-icon">▦</span>Tokens</a><a href="/customer-history"><span class="nav-icon">◷</span>History</a><a href="/customer-profile"><span class="nav-icon">◉</span>Profile</a></nav>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav" aria-label="Customer navigation">
+
+        <a class="active" href="/customer-dashboard">
+            <span class="nav-icon">⌂</span>
+            Home
+        </a>
+
+        <a href="/customer-tokens">
+            <span class="nav-icon">▦</span>
+            Tokens
+        </a>
+
+        <a href="/customer-history">
+            <span class="nav-icon">◷</span>
+            History
+        </a>
+
+        <a href="/customer-profile">
+            <span class="nav-icon">◉</span>
+            Profile
+        </a>
+
+    </nav>
+
 </div>
+
 <script>
-    function formatMoney(value) { return "₹" + Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 }); }
-    function formatDate(value) { if (!value) return "Date pending"; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); }
-    function statusClass(status) { return "badge badge-" + String(status || "UNKNOWN").toUpperCase().replace(/[^A-Z0-9_-]/g, ""); }
+
+    // Format currency
+    function formatMoney(value) {
+        return "₹" + Number(value || 0).toLocaleString("en-IN", {
+            maximumFractionDigits: 2
+        });
+    }
+
+    // Format date
+    function formatDate(value) {
+
+        if (!value) return "Date pending";
+
+        const date = new Date(value);
+
+        return Number.isNaN(date.getTime())
+            ? value
+            : date.toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric"
+            });
+    }
+
+    // Status badge styling
+    function statusClass(status) {
+
+        return "badge badge-" +
+            String(status || "UNKNOWN")
+                .toUpperCase()
+                .replace(/[^A-Z0-9_-]/g, "");
+    }
+
+    // Render recent activity
     function renderRecent(records) {
-        const container = document.getElementById("recentActivity"); container.replaceChildren();
-        if (!records.length) { container.innerHTML = '<div class="card empty-state"><div class="empty-icon">◌</div><h3>No activity yet</h3><p>Create a fuel token to begin your journey.</p></div>'; return; }
+
+        const container = document.getElementById("recentActivity");
+
+        container.replaceChildren();
+
+        if (!records.length) {
+
+            container.innerHTML = `
+                <div class="card empty-state">
+                    <div class="empty-icon">◌</div>
+                    <h3>No activity yet</h3>
+                    <p>Create a fuel token to begin your journey.</p>
+                </div>
+            `;
+
+            return;
+        }
+
         records.slice(0, 3).forEach(record => {
-            const item = document.createElement("article"); item.className = "card activity-item";
-            const icon = document.createElement("span"); icon.className = "activity-icon"; icon.textContent = record.fuel_type === "DIESEL" ? "D" : "P";
-            const copy = document.createElement("div"); copy.className = "activity-copy";
-            const title = document.createElement("strong"); title.textContent = (record.fuel_type || "Fuel") + " · " + (record.pump_number ? "Pump " + record.pump_number : "Pump pending");
-            const detail = document.createElement("small"); detail.textContent = formatDate(record.transaction_completed_at || record.completed_at || record.created_at); copy.append(title, detail);
-            const right = document.createElement("div"); right.style.textAlign = "right";
-            const amount = document.createElement("div"); amount.className = "amount"; amount.textContent = formatMoney(record.amount);
-            const badge = document.createElement("span"); badge.className = statusClass(record.status); badge.textContent = record.status || "UNKNOWN"; right.append(amount, badge); item.append(icon, copy, right); container.appendChild(item);
+
+            const item = document.createElement("article");
+            item.className = "card activity-item";
+
+            const icon = document.createElement("span");
+            icon.className = "activity-icon";
+            icon.textContent =
+                record.fuel_type === "DIESEL" ? "D" : "P";
+
+            const copy = document.createElement("div");
+            copy.className = "activity-copy";
+
+            const title = document.createElement("strong");
+
+            title.textContent =
+                (record.fuel_type || "Fuel") +
+                " · " +
+                (record.pump_number
+                    ? "Pump " + record.pump_number
+                    : "Pump pending");
+
+            const detail = document.createElement("small");
+
+            detail.textContent = formatDate(
+                record.transaction_completed_at ||
+                record.completed_at ||
+                record.created_at
+            );
+
+            copy.append(title, detail);
+
+            const right = document.createElement("div");
+            right.style.textAlign = "right";
+
+            const amount = document.createElement("div");
+            amount.className = "amount";
+            amount.textContent = formatMoney(record.amount);
+
+            const badge = document.createElement("span");
+            badge.className = statusClass(record.status);
+            badge.textContent = record.status || "UNKNOWN";
+
+            right.append(amount, badge);
+
+            item.append(icon, copy, right);
+
+            container.appendChild(item);
+
         });
     }
+
+    // Correct dashboard token summary
     function renderSummary(records) {
-        const completedStatuses = ["EXPIRED", "COMPLETED"];
-        const active = records.filter(record => !completedStatuses.includes(record.status)).length;
-        const completed = records.filter(record => completedStatuses.includes(record.status)).length;
-        const values = [records.length, active, completed];
-        document.querySelectorAll("#tokenSummary strong").forEach((element, index) => {
-            element.textContent = values[index];
-        });
+
+        const activeStatuses = [
+            "WAITING",
+            "AUTHORIZED"
+        ];
+
+        const completedStatuses = [
+            "USED",
+            "COMPLETED"
+        ];
+
+        const active = records.filter(record => {
+
+            const status = String(record.status || "").toUpperCase();
+
+            return activeStatuses.includes(status);
+
+        }).length;
+
+        const completed = records.filter(record => {
+
+            const status = String(record.status || "").toUpperCase();
+
+            return completedStatuses.includes(status);
+
+        }).length;
+
+        const total = records.length;
+
+        const values = [
+            total,
+            active,
+            completed
+        ];
+
+        document.querySelectorAll("#tokenSummary strong")
+            .forEach((element, index) => {
+
+                element.textContent = values[index];
+
+            });
     }
+
+    // Load dashboard information
     async function loadDashboard() {
+
         try {
-            const responses = await Promise.all([fetch("/api/customer/profile"), fetch("/api/customer/transactions")]); const profileResponse = responses[0], transactionsResponse = responses[1];
-            if (profileResponse.status === 401 || transactionsResponse.status === 401) { window.location.href = "/customer-login"; return; }
-            const profile = await profileResponse.json(), transactions = await transactionsResponse.json();
-            const records = Array.isArray(transactions) ? transactions : [];
-            if (profileResponse.ok) document.getElementById("greeting").textContent = "Hello, " + (profile.full_name || profile.username || "there");
-            renderSummary(records); renderRecent(records);
-        } catch (error) { renderSummary([]); renderRecent([]); }
+
+            const responses = await Promise.all([
+
+                fetch("/api/customer/profile"),
+
+                fetch("/api/customer/transactions")
+
+            ]);
+
+            const profileResponse = responses[0];
+            const transactionsResponse = responses[1];
+
+            if (
+                profileResponse.status === 401 ||
+                transactionsResponse.status === 401
+            ) {
+
+                window.location.href = "/customer-login";
+
+                return;
+            }
+
+            if (!profileResponse.ok || !transactionsResponse.ok) {
+                throw new Error("Unable to load dashboard data");
+            }
+
+            const profile = await profileResponse.json();
+
+            const transactions = await transactionsResponse.json();
+
+            const records = Array.isArray(transactions)
+                ? transactions
+                : [];
+
+            if (profileResponse.ok) {
+
+                document.getElementById("greeting").textContent =
+                    "Hello, " +
+                    (profile.full_name || profile.username || "there");
+
+            }
+
+            renderSummary(records);
+
+            renderRecent(records);
+
+        } catch (error) {
+
+            console.error("Dashboard loading error:", error);
+
+            renderSummary([]);
+
+            renderRecent([]);
+
+        }
     }
+
+    // Initialize dashboard
     loadDashboard();
+
 </script>
+
 </body>
 </html>
