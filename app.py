@@ -19,14 +19,24 @@ import sqlite3
 import os
 import re
 import base64
+import json
+import socket
+import smtplib
+import ssl
 import urllib.parse
 import urllib.request
 import urllib.error
+from dotenv import load_dotenv
+from email.message import EmailMessage
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+# Load local development settings from .env when present.  Hosting providers
+# continue to supply these values as normal environment variables.
+load_dotenv()
+
 app = Flask(__name__)
 app.secret_key = os.environ.get(
     "SECRET_KEY",
@@ -75,20 +85,57 @@ def password_requirement_message(password):
     if errors:
         return "Password must include " + "; ".join(errors) + "."
     return None
+def normalize_email_address(value):
+    if not isinstance(value, str):
+        return None, "Email address must be text"
+    email = value.strip().lower()
+    if len(email) > 254 or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        return None, "Enter a valid email address"
+    return email, None
 def normalize_phone_number(value):
     if not isinstance(value, str):
         return None, "Phone number must be text"
-    phone = value.strip().replace(" ", "").replace("-", "")
+    phone = value.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    # FuelFlow Pro is used with Indian mobile numbers. Accept the usual local
+    # forms too, then store and send only Twilio-compatible E.164 numbers.
+    if re.fullmatch(r"[6-9]\d{9}", phone):
+        phone = "+91" + phone
+    elif re.fullmatch(r"0[6-9]\d{9}", phone):
+        phone = "+91" + phone[1:]
+    elif re.fullmatch(r"91[6-9]\d{9}", phone):
+        phone = "+" + phone
+    elif phone.startswith("00"):
+        phone = "+" + phone[2:]
     if not re.fullmatch(r"\+[1-9]\d{7,14}", phone):
         return None, "Use an international phone number, for example +919876543210"
     return phone, None
+def phone_lookup_variants(phone):
+    """Return legacy Indian representations that may exist in old customer rows."""
+    variants = [phone]
+    if re.fullmatch(r"\+91[6-9]\d{9}", phone):
+        local_number = phone[3:]
+        variants.extend([local_number, "0" + local_number, "91" + local_number])
+    return variants
+def twilio_delivery_error_message(provider_code):
+    """Return a safe, actionable customer-facing SMS failure message."""
+    messages = {
+        20003: "The SMS service credentials are invalid. Please ask the administrator to check the Twilio settings.",
+        21211: "The mobile number is invalid. Please check it and try again.",
+        21408: "SMS to this country is not enabled in the Twilio account.",
+        21606: "The configured Twilio sender number is not active for this account. Please ask the administrator to add an SMS-capable Twilio number.",
+        21608: "This Twilio trial account can send SMS only to verified mobile numbers.",
+    }
+    return messages.get(provider_code, "We could not send the OTP by SMS. Check the mobile number and try again later.")
 def send_reset_sms(phone, otp):
     """Send a password-reset OTP through Twilio."""
     account_sid = os.environ.get("TWILIO_ACCOUNT_SID")
     auth_token = os.environ.get("TWILIO_AUTH_TOKEN")
     from_number = os.environ.get("TWILIO_FROM_NUMBER")
-    if not all([account_sid, auth_token, from_number]):
-        return False
+    if not all([account_sid, auth_token, from_number]) or any(
+        value.startswith("PASTE_") for value in [account_sid or "", auth_token or "", from_number or ""]
+    ):
+        app.logger.error("Password-reset SMS is not configured: Twilio settings are missing")
+        return False, "SMS password reset is not configured on this computer. Please ask the administrator to add the Twilio settings."
     payload = urllib.parse.urlencode({
         "To": phone, "From": from_number,
         "Body": f"Your FuelFlow Pro password reset code is {otp}. It expires in 10 minutes."
@@ -102,9 +149,70 @@ def send_reset_sms(phone, otp):
     )
     try:
         with urllib.request.urlopen(sms_request, timeout=10) as response:
-            return 200 <= response.status < 300
-    except (urllib.error.URLError, urllib.error.HTTPError):
-        return False
+            if 200 <= response.status < 300:
+                return True, None
+            app.logger.error("Twilio returned an unexpected HTTP status: %s", response.status)
+    except urllib.error.HTTPError as error:
+        # Do not expose Twilio's response details to a customer, but keep the
+        # provider code in the local/server log for the administrator.
+        try:
+            details = json.loads(error.read().decode("utf-8"))
+            provider_code = details.get("code")
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            provider_code = None
+        app.logger.error("Twilio rejected password-reset SMS (HTTP %s, code %s)", error.code, provider_code)
+    except (urllib.error.URLError, TimeoutError, socket.timeout, OSError) as error:
+        app.logger.error("Could not contact Twilio for password-reset SMS: %s", error)
+
+    return False, twilio_delivery_error_message(provider_code if "provider_code" in locals() else None)
+def send_reset_email(recipient, otp):
+    """Send a password-reset OTP through a configured SMTP account."""
+    username = os.environ.get("SMTP_USERNAME")
+    app_password = os.environ.get("SMTP_APP_PASSWORD")
+    sender = os.environ.get("SMTP_FROM_EMAIL") or username
+    host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    port = os.environ.get("SMTP_PORT", "465")
+    if not all([username, app_password, sender]) or any(
+        value.startswith("PASTE_") for value in [username or "", app_password or "", sender or ""]
+    ):
+        app.logger.error("Password-reset email is not configured: SMTP settings are missing")
+        return False, "Email password reset is not configured on this computer. Please ask the administrator to add the email settings."
+    try:
+        smtp_port = int(port)
+    except ValueError:
+        app.logger.error("Password-reset email is not configured: SMTP_PORT is invalid")
+        return False, "Email password reset is not configured correctly."
+    message = EmailMessage()
+    message["Subject"] = "Your FuelFlow Pro password reset code"
+    message["From"] = sender
+    message["To"] = recipient
+    message.set_content(
+        f"Your FuelFlow Pro password reset code is {otp}.\n\n"
+        "It expires in 10 minutes. If you did not request this, you can ignore this email."
+    )
+    try:
+        if smtp_port == 465:
+            smtp_connection = smtplib.SMTP_SSL(
+                host, smtp_port, timeout=15, context=ssl.create_default_context()
+            )
+        else:
+            smtp_connection = smtplib.SMTP(host, smtp_port, timeout=15)
+            smtp_connection.ehlo()
+            smtp_connection.starttls(context=ssl.create_default_context())
+            smtp_connection.ehlo()
+        with smtp_connection as smtp:
+            smtp.login(username, app_password)
+            smtp.send_message(message)
+        return True, None
+    except smtplib.SMTPAuthenticationError as error:
+        app.logger.error("Gmail rejected password-reset email authentication: %s", error)
+        return False, "Email sign-in failed. Check the Gmail address and App Password in the local settings."
+    except smtplib.SMTPServerDisconnected as error:
+        app.logger.error("Gmail closed the password-reset email connection: %s", error)
+        return False, "Could not connect to Gmail. Check your internet or firewall and try again."
+    except (smtplib.SMTPException, OSError, TimeoutError) as error:
+        app.logger.error("Could not send password-reset email: %s", error)
+        return False, "We could not send the OTP email. Please check the email address and try again later."
 def login_required(role=None):
     def decorator(function):
         @wraps(function)
@@ -343,6 +451,10 @@ def update_customer_profile():
         return jsonify({"error": "Email or phone number is too long"}), 400
     if email and ("@" not in email or email.startswith("@") or email.endswith("@")):
         return jsonify({"error": "Enter a valid email address"}), 400
+    if phone:
+        phone, phone_error = normalize_phone_number(phone)
+        if phone_error:
+            return jsonify({"error": phone_error}), 400
     connection = get_connection()
     try:
         connection.execute("""
@@ -447,41 +559,42 @@ def request_customer_password_reset():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Valid JSON data is required"}), 400
-    phone, phone_error = normalize_phone_number(data.get("phone"))
-    if phone_error:
-        return jsonify({"error": phone_error}), 400
+    email, email_error = normalize_email_address(data.get("email"))
+    if email_error:
+        return jsonify({"error": email_error}), 400
     connection = get_connection()
     try:
-        customer = connection.execute("SELECT id FROM customers WHERE phone = ?", (phone,)).fetchone()
+        customer = connection.execute("SELECT id FROM customers WHERE email = ?", (email,)).fetchone()
         if customer is None:
-            return jsonify({"message": "If an account matches this number, an OTP has been sent."}), 200
+            return jsonify({"message": "If an account matches this email, an OTP has been sent."}), 200
         latest = connection.execute("""
-            SELECT created_at FROM password_reset_otps WHERE customer_id = ? ORDER BY id DESC LIMIT 1
+            SELECT created_at FROM password_reset_email_otps WHERE customer_id = ? ORDER BY id DESC LIMIT 1
         """, (customer["id"],)).fetchone()
         now = datetime.now()
         if latest and now - datetime.fromisoformat(latest["created_at"]) < timedelta(seconds=60):
             return jsonify({"error": "Please wait one minute before requesting another OTP"}), 429
         otp = f"{secrets.randbelow(1_000_000):06d}"
-        if not send_reset_sms(phone, otp):
-            return jsonify({"error": "SMS reset service is unavailable. Please try again later."}), 503
-        connection.execute("UPDATE password_reset_otps SET used_at = ? WHERE customer_id = ? AND used_at IS NULL", (now.isoformat(timespec="seconds"), customer["id"]))
+        sent, delivery_error = send_reset_email(email, otp)
+        if not sent:
+            return jsonify({"error": delivery_error}), 503
+        connection.execute("UPDATE password_reset_email_otps SET used_at = ? WHERE customer_id = ? AND used_at IS NULL", (now.isoformat(timespec="seconds"), customer["id"]))
         connection.execute("""
-            INSERT INTO password_reset_otps (customer_id, phone, otp_hash, created_at, expires_at)
+            INSERT INTO password_reset_email_otps (customer_id, email, otp_hash, created_at, expires_at)
             VALUES (?, ?, ?, ?, ?)
-        """, (customer["id"], phone, generate_password_hash(otp), now.isoformat(timespec="seconds"), (now + timedelta(minutes=10)).isoformat(timespec="seconds")))
+        """, (customer["id"], email, generate_password_hash(otp), now.isoformat(timespec="seconds"), (now + timedelta(minutes=10)).isoformat(timespec="seconds")))
         connection.commit()
     finally:
         connection.close()
-    return jsonify({"message": "If an account matches this number, an OTP has been sent."}), 200
+    return jsonify({"message": "If an account matches this email, an OTP has been sent."}), 200
 @app.route("/api/customer/password-reset/confirm", methods=["POST"])
 def confirm_customer_password_reset():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Valid JSON data is required"}), 400
-    phone, phone_error = normalize_phone_number(data.get("phone"))
+    email, email_error = normalize_email_address(data.get("email"))
     otp, new_password, confirm_password = data.get("otp"), data.get("new_password"), data.get("confirm_password")
-    if phone_error or not isinstance(otp, str) or not re.fullmatch(r"\d{6}", otp):
-        return jsonify({"error": phone_error or "Enter the 6-digit OTP"}), 400
+    if email_error or not isinstance(otp, str) or not re.fullmatch(r"\d{6}", otp):
+        return jsonify({"error": email_error or "Enter the 6-digit OTP"}), 400
     if not all(isinstance(value, str) and value for value in [new_password, confirm_password]):
         return jsonify({"error": "New password and confirmation are required"}), 400
     if len(new_password) > 256:
@@ -495,18 +608,18 @@ def confirm_customer_password_reset():
     try:
         reset = connection.execute("""
             SELECT r.id, r.customer_id, r.otp_hash, r.expires_at, r.attempt_count
-            FROM password_reset_otps AS r JOIN customers AS c ON c.id = r.customer_id
-            WHERE c.phone = ? AND r.used_at IS NULL ORDER BY r.id DESC LIMIT 1
-        """, (phone,)).fetchone()
+            FROM password_reset_email_otps AS r JOIN customers AS c ON c.id = r.customer_id
+            WHERE c.email = ? AND r.used_at IS NULL ORDER BY r.id DESC LIMIT 1
+        """, (email,)).fetchone()
         now = datetime.now()
         if reset is None or reset["attempt_count"] >= 5 or now > datetime.fromisoformat(reset["expires_at"]):
             return jsonify({"error": "OTP is invalid or has expired"}), 400
         if not check_password_hash(reset["otp_hash"], otp):
-            connection.execute("UPDATE password_reset_otps SET attempt_count = attempt_count + 1 WHERE id = ?", (reset["id"],))
+            connection.execute("UPDATE password_reset_email_otps SET attempt_count = attempt_count + 1 WHERE id = ?", (reset["id"],))
             connection.commit()
             return jsonify({"error": "OTP is invalid or has expired"}), 400
         connection.execute("UPDATE customers SET password_hash = ? WHERE id = ?", (generate_password_hash(new_password), reset["customer_id"]))
-        connection.execute("UPDATE password_reset_otps SET used_at = ? WHERE id = ?", (now.isoformat(timespec="seconds"), reset["id"]))
+        connection.execute("UPDATE password_reset_email_otps SET used_at = ? WHERE id = ?", (now.isoformat(timespec="seconds"), reset["id"]))
         connection.commit()
     finally:
         connection.close()
