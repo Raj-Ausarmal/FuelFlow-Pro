@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,6 +7,7 @@
     <title>My Tokens | FuelFlow Pro</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='customer.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <style>
         .token-status-summary {
             display: grid;
@@ -33,6 +35,140 @@
             font-size: 1.4rem;
         }
 
+        /* Token accordion */
+        .token-card {
+            overflow: hidden;
+            padding: 0 !important;
+            margin-bottom: 14px;
+        }
+
+        .token-accordion-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 20px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .token-accordion-header:hover {
+            background: rgba(148, 163, 184, 0.07);
+        }
+
+        .token-main-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .token-code {
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin-top: 7px;
+            overflow-wrap: anywhere;
+        }
+
+        .token-summary-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 9px;
+            margin-top: 10px;
+        }
+
+        .token-summary-chip {
+            padding: 6px 10px;
+            background: #f3f6f9;
+            border-radius: 7px;
+            color: #334155;
+            font-size: 0.84rem;
+            font-weight: 600;
+        }
+
+        .token-header-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+        }
+
+        .token-expand-button {
+            width: 38px;
+            height: 38px;
+            border: 1px solid #e2e8f0;
+            border-radius: 50%;
+            background: #f8fafc;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.25s ease, background 0.2s ease;
+        }
+
+        .token-expand-button:hover {
+            background: #eaf0f6;
+        }
+
+        .token-expand-button svg {
+            width: 19px;
+            height: 19px;
+            transition: transform 0.3s ease;
+        }
+
+        .token-card.expanded .token-expand-button svg {
+            transform: rotate(180deg);
+        }
+
+        .token-details-wrapper {
+            display: grid;
+            grid-template-rows: 0fr;
+            opacity: 0;
+            transition: grid-template-rows 0.3s ease, opacity 0.25s ease;
+        }
+
+        .token-card.expanded .token-details-wrapper {
+            grid-template-rows: 1fr;
+            opacity: 1;
+        }
+
+        .token-details-inner {
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .token-details {
+            padding: 18px 20px 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .token-meta {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .token-meta > div {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            padding: 13px;
+            border-radius: 12px;
+            background: #f5f7f9;
+            min-width: 0;
+        }
+
+        .token-meta small {
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+
+        .token-meta strong {
+            color: #102a43;
+            font-size: 0.98rem;
+            overflow-wrap: anywhere;
+        }
+
         .token-expiry {
             margin-top: 12px;
             padding: 10px 12px;
@@ -53,19 +189,104 @@
             color: #b91c1c;
         }
 
+        .token-actions {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 18px;
+            margin-top: 18px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .token-actions button {
+            cursor: pointer;
+        }
+
+        .qr-panel {
+            margin-top: 15px;
+            padding: 18px;
+            border-radius: 12px;
+            background: #f5f7f9;
+            text-align: center;
+        }
+
+        .qr-panel.hidden {
+            display: none;
+        }
+
+        .qr-panel canvas,
+        .qr-panel img {
+            display: block;
+            margin: 14px auto;
+            max-width: 100%;
+        }
+
+        .token-expand-button:focus-visible,
+        .token-accordion-header:focus-visible {
+            outline: 3px solid #0d9488;
+            outline-offset: 3px;
+        }
+
         @media (max-width: 600px) {
             .token-status-summary {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
+
+            .token-accordion-header {
+                padding: 16px;
+                gap: 8px;
+            }
+
+            .token-header-right {
+                gap: 8px;
+            }
+
+            .token-code {
+                font-size: 1rem;
+            }
+
+            .token-summary-meta {
+                gap: 6px;
+            }
+
+            .token-summary-chip {
+                font-size: 0.78rem;
+                padding: 5px 8px;
+            }
+
+            .token-details {
+                padding: 15px;
+            }
+
+            .token-meta {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .token-expand-button {
+                width: 34px;
+                height: 34px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .token-details-wrapper,
+            .token-expand-button,
+            .token-expand-button svg {
+                transition: none;
+            }
         }
     </style>
 </head>
+
 <body>
 <div class="app-shell">
+
     <header class="topbar">
         <a class="brand" href="/customer-dashboard">
             <span class="brand-mark">⛽</span>FuelFlow Pro
         </a>
+
         <div class="topbar-actions">
             <a class="icon-button" href="/customer-support" aria-label="Help">?</a>
             <a class="icon-button" href="/customer-logout" aria-label="Logout">↪</a>
@@ -87,6 +308,7 @@
                         <label for="vehicleNumber">Vehicle Number</label>
                         <input id="vehicleNumber" placeholder="Example: MH20AB1234" required>
                     </div>
+
                     <div class="field">
                         <label for="fuelType">Fuel Type</label>
                         <select id="fuelType" required>
@@ -99,10 +321,13 @@
 
                 <div class="field">
                     <label for="amount">Amount (₹)</label>
-                    <input id="amount" type="number" min="1" step="0.01" placeholder="Enter amount" required>
+                    <input id="amount" type="number" min="1" step="0.01"
+                           placeholder="Enter amount" required>
                 </div>
 
-                <button id="generateButton" class="button full" type="submit">Generate Fuel Token</button>
+                <button id="generateButton" class="button full" type="submit">
+                    Generate Fuel Token
+                </button>
             </form>
         </section>
 
@@ -114,6 +339,7 @@
 
             <div class="token-toolbar">
                 <span id="tokenCount" class="token-count">Loading tokens…</span>
+
                 <select id="tokenStatusFilter" aria-label="Filter tokens by status">
                     <option value="">All statuses</option>
                     <option value="ACTIVE">Active</option>
@@ -123,19 +349,24 @@
                 </select>
             </div>
 
-            <div class="token-status-summary" id="tokenStatusSummary" aria-label="Token status summary">
+            <div class="token-status-summary" id="tokenStatusSummary"
+                 aria-label="Token status summary">
+
                 <div class="status-summary-item">
                     <span>Active</span>
                     <strong id="activeTokenCount">0</strong>
                 </div>
+
                 <div class="status-summary-item">
                     <span>Used</span>
                     <strong id="usedTokenCount">0</strong>
                 </div>
+
                 <div class="status-summary-item">
                     <span>Cancelled</span>
                     <strong id="cancelledTokenCount">0</strong>
                 </div>
+
                 <div class="status-summary-item">
                     <span>Expired</span>
                     <strong id="expiredTokenCount">0</strong>
@@ -152,11 +383,13 @@
         <a href="/customer-history"><span class="nav-icon">◷</span>History</a>
         <a href="/customer-profile"><span class="nav-icon">◉</span>Profile</a>
     </nav>
+
 </div>
 
 <script>
 const vehicleInput = document.getElementById("vehicleNumber");
 const vehicleField = vehicleInput.closest(".field");
+
 const savedVehicleField = document.createElement("div");
 const savedVehicleLabel = document.createElement("label");
 const savedVehicleSelect = document.createElement("select");
@@ -165,7 +398,9 @@ savedVehicleField.className = "field";
 savedVehicleLabel.htmlFor = "savedVehicle";
 savedVehicleLabel.textContent = "Saved Vehicles";
 savedVehicleSelect.id = "savedVehicle";
-savedVehicleSelect.innerHTML = '<option value="">Type a new vehicle below</option>';
+savedVehicleSelect.innerHTML =
+    '<option value="">Type a new vehicle below</option>';
+
 savedVehicleField.append(savedVehicleLabel, savedVehicleSelect);
 vehicleField.parentNode.insertBefore(savedVehicleField, vehicleField);
 
@@ -178,6 +413,7 @@ savedVehicleSelect.addEventListener("change", () => {
 async function loadSavedVehicles() {
     try {
         const response = await fetch("/api/customer/vehicles");
+
         if (!response.ok) return;
 
         const vehicles = await response.json();
@@ -362,44 +598,129 @@ async function cancelToken(code) {
 
 function card(token) {
     const item = document.createElement("article");
-    const main = document.createElement("div");
-    const top = document.createElement("div");
-    const title = document.createElement("div");
+    const header = document.createElement("div");
+    const mainInfo = document.createElement("div");
     const code = document.createElement("div");
+    const summaryMeta = document.createElement("div");
+    const headerRight = document.createElement("div");
+    const expandButton = document.createElement("button");
+    const detailsWrapper = document.createElement("div");
+    const detailsInner = document.createElement("div");
+    const details = document.createElement("div");
     const meta = document.createElement("div");
     const actions = document.createElement("div");
 
     item.className = "card token-card";
-    main.className = "token-card-main";
-    top.className = "token-top";
+
+    // Compact visible header
+    header.className = "token-accordion-header";
+    header.setAttribute("role", "button");
+    header.setAttribute("tabindex", "0");
+    header.setAttribute("aria-expanded", "false");
+
+    mainInfo.className = "token-main-info";
+
+    const fuelLabel = document.createElement("small");
+    fuelLabel.className = "muted";
+    fuelLabel.textContent = "FUEL TOKEN";
+
     code.className = "token-code";
     code.textContent = token.token_code;
 
-    title.innerHTML = "<small class='muted'>FUEL TOKEN</small>";
-    title.appendChild(code);
+    mainInfo.append(fuelLabel, code);
 
-    const effectiveStatus = getEffectiveStatus(token);
-    top.append(title, makeBadge(effectiveStatus));
+    summaryMeta.className = "token-summary-meta";
+
+    const fuelChip = document.createElement("span");
+    fuelChip.className = "token-summary-chip";
+    fuelChip.textContent = token.fuel_type || "—";
+
+    const amountChip = document.createElement("span");
+    amountChip.className = "token-summary-chip";
+    amountChip.textContent = money(token.amount);
+
+    summaryMeta.append(fuelChip, amountChip);
+    mainInfo.appendChild(summaryMeta);
+
+    headerRight.className = "token-header-right";
+
+    headerRight.appendChild(makeBadge(getEffectiveStatus(token)));
+
+    expandButton.type = "button";
+    expandButton.className = "token-expand-button";
+    expandButton.setAttribute("aria-label", "Expand token details");
+    expandButton.setAttribute("aria-expanded", "false");
+
+    expandButton.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true">
+            <path d="m6 9 6 6 6-6"></path>
+        </svg>
+    `;
+
+    headerRight.appendChild(expandButton);
+    header.append(mainInfo, headerRight);
+
+    // Expand and collapse behaviour
+    function toggleDetails() {
+        const expanded = item.classList.toggle("expanded");
+
+        header.setAttribute("aria-expanded", String(expanded));
+        expandButton.setAttribute("aria-expanded", String(expanded));
+
+        expandButton.setAttribute(
+            "aria-label",
+            expanded ? "Collapse token details" : "Expand token details"
+        );
+    }
+
+    expandButton.addEventListener("click", event => {
+        event.stopPropagation();
+        toggleDetails();
+    });
+
+    header.addEventListener("click", event => {
+        if (event.target.closest("button")) return;
+        toggleDetails();
+    });
+
+    header.addEventListener("keydown", event => {
+        if (event.target !== header) return;
+
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggleDetails();
+        }
+    });
+
+    // Expandable content
+    detailsWrapper.className = "token-details-wrapper";
+    detailsInner.className = "token-details-inner";
+    details.className = "token-details";
 
     meta.className = "token-meta";
 
     [
-        ["Fuel", token.fuel_type || "—"],
-        ["Amount", money(token.amount)],
         ["Vehicle", token.vehicle_number || "—"],
         ["Created", date(token.created_at)]
     ].forEach(([label, value]) => {
         const cell = document.createElement("div");
 
-        cell.innerHTML = "<small></small><strong></strong>";
-        cell.querySelector("small").textContent = label;
-        cell.querySelector("strong").textContent = value;
+        const small = document.createElement("small");
+        const strong = document.createElement("strong");
 
+        small.textContent = label;
+        strong.textContent = value;
+
+        cell.append(small, strong);
         meta.appendChild(cell);
     });
 
-    main.append(top, meta);
+    details.appendChild(meta);
 
+    // Expiry countdown
     if (token.status === "WAITING" && token.expires_at) {
         const expiryElement = document.createElement("div");
 
@@ -420,9 +741,10 @@ function card(token) {
             }
         }
 
-        main.appendChild(expiryElement);
+        details.appendChild(expiryElement);
     }
 
+    // Existing QR and copy actions
     actions.className = "token-actions";
 
     const qrButton = document.createElement("button");
@@ -430,9 +752,11 @@ function card(token) {
     const panel = document.createElement("div");
     const qr = document.createElement("div");
 
+    qrButton.type = "button";
     qrButton.className = "text-button";
     qrButton.textContent = "View QR code";
 
+    copyButton.type = "button";
     copyButton.className = "text-button copy-button";
     copyButton.textContent = "Copy token";
 
@@ -474,9 +798,10 @@ function card(token) {
 
     actions.append(qrButton, copyButton);
 
-    if (effectiveStatus === "WAITING") {
+    if (getEffectiveStatus(token) === "WAITING") {
         const cancelButton = document.createElement("button");
 
+        cancelButton.type = "button";
         cancelButton.className = "text-button danger-button";
         cancelButton.textContent = "Cancel token";
         cancelButton.onclick = () => cancelToken(token.token_code);
@@ -484,7 +809,11 @@ function card(token) {
         actions.append(cancelButton);
     }
 
-    item.append(main, actions, panel);
+    details.append(actions, panel);
+    detailsInner.appendChild(details);
+    detailsWrapper.appendChild(detailsInner);
+
+    item.append(header, detailsWrapper);
 
     return item;
 }
@@ -582,6 +911,7 @@ async function loadTokens() {
     }
 }
 
+// Fuel token creation
 document.getElementById("tokenForm").addEventListener("submit", async event => {
     event.preventDefault();
 
@@ -635,5 +965,6 @@ filter.onchange = render;
 loadTokens();
 setInterval(updateCountdowns, 1000);
 </script>
+
 </body>
 </html>
